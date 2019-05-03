@@ -1,4 +1,5 @@
 import math
+import random
 
 
 class Node():
@@ -26,6 +27,9 @@ class Wave():
         self.width, self.height = size[0], size[1]
         self.wave = [[Node(state_space)] * size[0]] * size[1]
 
+    def __getitem__(self, index):
+        return self.wave[index[0]][index[1]]
+
     def min_entropy_pos(self):
         '''寻找熵最小的格点的位置'''
         x, y = 0, 0
@@ -40,4 +44,29 @@ class Wave():
         return x, y
 
     def collapse(self):
+        '''选择目前熵最小的格点，并随机塌缩'''
+        x, y = self.min_entropy_pos()
+        if len(self.wave[x][y].space) == 1:
+            self.wave[x][y].entropy == 0
+        elif len(self[x, y].space) < 1:
+            s = random.choices(self[x, y].space.keys(),
+                               weights=self[x, y].space.value())
+            self.propagate((x, y))
+        else:
+            pass
+
+    def propagate(self, position):
+        '''从给定位置处向周围传播塌缩'''
         pass
+
+    def observe(self):
+        '''测量整个波函数'''
+        while self.isnot_all_collapsed():
+            self.collapse()
+
+    def isnot_all_collapsed(self):
+        for x in self.width:
+            for y in self.height:
+                if self[x, y].entropy != 0:
+                    return True
+        return False
