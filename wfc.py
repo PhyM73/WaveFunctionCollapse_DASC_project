@@ -2,12 +2,13 @@ import math
 import random
 
 
-class Node():
+class Lattice():
     '''格点单元'''
 
     def __init__(self, state_space):
-        self.space = state_space
-        self.entropy = Node.shannon(state_space)
+        # 格点至少具备两个属性：状态空间，熵
+        self.space = state_space  # state_space={state:wight}
+        self.entropy = Lattice.shannon(state_space)
 
     @staticmethod
     def shannon(statespace):
@@ -24,8 +25,9 @@ class Wave():
     '''体系波函数'''
 
     def __init__(self, size, state_space):
+        # 波函数为包含所有格点的矩阵
         self.width, self.height = size[0], size[1]
-        self.wave = [[Node(state_space)] * size[0]] * size[1]
+        self.wave = [[Lattice(state_space)] * size[0]] * size[1]
 
     def __getitem__(self, index):
         return self.wave[index[0]][index[1]]
