@@ -28,6 +28,10 @@ class Wave():
         # 波函数为包含所有格点的矩阵
         self.width, self.height = size[0], size[1]
         self.wave = [[Lattice(state_space)] * size[0]] * size[1]
+        # self.wait = []
+        # for i in range(size[0]):
+        #     for j in range(size[1]):
+        #         self.wait.append((i,j))
 
     def __getitem__(self, index):
         return self.wave[index[0]][index[1]]
@@ -40,9 +44,10 @@ class Wave():
             for j in range(self.height):
                 if self.wave[x][y].entropy == 0:
                     continue
-                if self.wave[i][j].entropy < min_entropy:
+                noise = random.random()
+                if self.wave[i][j].entropy - noise < min_entropy:
                     x, y = i, j
-                    min_entropy = self.wave[x][y].entropy
+                    min_entropy = self.wave[x][y].entropy - noise
         return x, y
 
     def collapse(self):
@@ -53,6 +58,7 @@ class Wave():
         elif len(self[x, y].space) < 1:
             s = random.choices(self[x, y].space.keys(),
                                weights=self[x, y].space.value())
+            self[x, y].space = {s, self[x, y].space[s]}
             self.propagate((x, y))
         else:
             pass
