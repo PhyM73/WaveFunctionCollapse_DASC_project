@@ -72,3 +72,6 @@ class Wave():
                 if self[x, y].entropy != 0:
                     return True
         return False
+
+class Finder():
+    pass
