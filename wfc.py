@@ -1,17 +1,25 @@
 import math
 import random
+from PIL import Image
 
+image = Image.open(image_path)
 class Scan:
 
     def __init__(self, image):
+        self.width = image.size[0]
+        self.height = image.size[1]
         self.matrix = trans_image_to_matrix(image)
-        self.width = len(matrix)
-        self.height = len(matrix[0])
         self.tiles = set()  #{tile1, tile2, tile3, ...}
         self.weights = dict() #{tile1:weight, tile2:weight, ...}
      
 
-    def trans_image_to_matrix(image): 
+    def trans_image_to_matrix(image):
+        #将输入的图片转化为矩阵，矩阵元为像素值(R,G,B,A)
+        #暂时还只能将每个像素当作一个tile，可以尝试将图片分隔为由多个像素点组成的网格，每个网格当作一个tile
+        self.matrix = [[None]*self.height for _ in range(self.width)]
+        for x in range(self.width):
+            for y in range(self.height):
+                self.matrix[x][y] = image.getpixel((y, x))   
 
     def get_rules(self):
         '''之后调用此函数可得到输入矩阵的所有信息
