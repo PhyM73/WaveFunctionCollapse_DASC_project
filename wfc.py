@@ -117,5 +117,4 @@ class Wave():
                     return True
         return False
 
-class Finder():
-    pass
+        return False
