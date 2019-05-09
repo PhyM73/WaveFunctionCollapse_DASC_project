@@ -1,6 +1,50 @@
 import math
 import random
 
+class Scan:
+
+    def __init__(self, image):
+        self.matrix = trans_image_to_matrix(image)
+        self.width = len(matrix)
+        self.height = len(matrix[0])
+        self.tiles = set()  #{tile1, tile2, tile3, ...}
+        self.weights = dict() #{tile1:weight, tile2:weight, ...}
+     
+
+    def trans_image_to_matrix(image): 
+
+    def get_rules(self):
+        '''之后调用此函数可得到输入矩阵的所有信息
+        如:tiles, weights, rules = Scan(Matrix).get_rules()
+        ''' 
+#构建self.tiles、self.weights
+        for x in range(self.width):
+            for y in range(self.height):
+                if matrix[x][y] not in self.tiles:
+                    self.tiles.add(matrix[x][y])
+                    self.weights[matrix[x][y]] = 1
+                else:
+                    self.weights[matrix[x][y]] += 1  
+ #构建self.rules                   
+        left=(0,-1); right=(0,1); up=(-1,0); down=(1,0)
+        directions = {left, right, up, down}
+        rule_in_one_dir = dict.fromkeys(self.tiles, 0)       
+        
+        for tile in self.tiles: 
+            self.rules[tile] = {left:rule_in_one_dir.copy(), right:rule_in_one_dir.copy(), 、
+                up:rule_in_one_dir.copy(), down:rule_in_one_dir.copy()}
+            #self.rules -- {tile1:{left:{tile1:count, tile2:count,...}, right:{...}, up:{...}, down:{...}}, tile2:{...}, ...}
+        for x in range(self.width):
+            for y in range(self.height):
+                for direction in directions:
+                    x1 = x + direction[0]; y1 = y + direction[1]
+                    if x1 >= 0 and x1 < self.width and y1 >= 0 and y1 < self.height:
+                        self.rules[self.matrix[x][y]][direction][self.matrix[x1][y1]] += 1
+        return self.tiles, self.weights, self.rules
+
+#对于self.rules有两种想法，一种是一个字典，其keys对应每一种tile，其values为一个字典，记录了在它每个方向出现每种tile的次数，也就是上面实现的；
+#另一种想法是返回一个字典，其keys对应一个list，为[current_tile, other_tile, direction]，其values为该模式出现的次数。
+#对于其中记录的信息，上面的实现是记录了每种模式出现的次数，也可以改为记录它们出现的频率，视之后使用的方便调整。
 
 class Lattice():
     '''格点单元'''
