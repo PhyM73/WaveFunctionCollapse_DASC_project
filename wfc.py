@@ -2,24 +2,26 @@ import math
 import random
 from PIL import Image
 
-image = Image.open(image_path)
+image = Image.open(r'iamge_path')
 class Scan:
 
     def __init__(self, image):
-        self.width = image.size[0]
-        self.height = image.size[1]
-        self.matrix = trans_image_to_matrix(image)
+        self.width = image.height
+        self.height = image.width
+        self.matrix = self.trans_image_to_matrix(image)
         self.tiles = set()  #{tile1, tile2, tile3, ...}
         self.weights = dict() #{tile1:weight, tile2:weight, ...}
-     
+        self.rules = dict()#self.rules -- {tile1:{left:{tile1:count, tile2:count,...}, right:{...}, up:{...}, down:{...}}, tile2:{...}, ...}
 
-    def trans_image_to_matrix(image):
-        #将输入的图片转化为矩阵，矩阵元为像素值(R,G,B,A)
+    def trans_image_to_matrix(self, image):
+        #将输入的图片转化为矩阵，矩阵元为像素值tuple
         #暂时还只能将每个像素当作一个tile，可以尝试将图片分隔为由多个像素点组成的网格，每个网格当作一个tile
-        self.matrix = [[None]*self.height for _ in range(self.width)]
+        matrix = [[None]*self.height for _ in range(self.width)]
         for x in range(self.width):
             for y in range(self.height):
-                self.matrix[x][y] = image.getpixel((y, x))   
+                matrix[x][y] = image.getpixel((x, y))
+        print(matrix)
+        return matrix  
 
     def get_rules(self):
         '''之后调用此函数可得到输入矩阵的所有信息
@@ -28,20 +30,18 @@ class Scan:
 #构建self.tiles、self.weights
         for x in range(self.width):
             for y in range(self.height):
-                if matrix[x][y] not in self.tiles:
-                    self.tiles.add(matrix[x][y])
-                    self.weights[matrix[x][y]] = 1
+                if self.matrix[x][y] not in self.tiles:
+                    self.tiles.add(self.matrix[x][y])
+                    self.weights[self.matrix[x][y]] = 1
                 else:
-                    self.weights[matrix[x][y]] += 1  
+                    self.weights[self.matrix[x][y]] += 1  
  #构建self.rules                   
         left=(0,-1); right=(0,1); up=(-1,0); down=(1,0)
         directions = {left, right, up, down}
         rule_in_one_dir = dict.fromkeys(self.tiles, 0)       
         
         for tile in self.tiles: 
-            self.rules[tile] = {left:rule_in_one_dir.copy(), right:rule_in_one_dir.copy(), 、
-                up:rule_in_one_dir.copy(), down:rule_in_one_dir.copy()}
-            #self.rules -- {tile1:{left:{tile1:count, tile2:count,...}, right:{...}, up:{...}, down:{...}}, tile2:{...}, ...}
+            self.rules[tile] = {left:rule_in_one_dir.copy(), right:rule_in_one_dir.copy(), up:rule_in_one_dir.copy(), down:rule_in_one_dir.copy()}            
         for x in range(self.width):
             for y in range(self.height):
                 for direction in directions:
