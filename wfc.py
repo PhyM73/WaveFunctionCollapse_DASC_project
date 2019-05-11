@@ -2,12 +2,12 @@ import math
 import random
 from PIL import Image
 
-image = Image.open(r'iamge_path')
+image = Image.open(r'image_path')
 class Scan:
 
     def __init__(self, image):
-        self.width = image.height
-        self.height = image.width
+        self.width = image.width
+        self.height = image.height
         self.matrix = self.trans_image_to_matrix(image)
         self.tiles = set()  #{tile1, tile2, tile3, ...}
         self.weights = dict() #{tile1:weight, tile2:weight, ...}
@@ -20,7 +20,6 @@ class Scan:
         for x in range(self.width):
             for y in range(self.height):
                 matrix[x][y] = image.getpixel((x, y))
-        print(matrix)
         return matrix  
 
     def get_rules(self):
@@ -36,7 +35,7 @@ class Scan:
                 else:
                     self.weights[self.matrix[x][y]] += 1  
  #构建self.rules                   
-        left=(0,-1); right=(0,1); up=(-1,0); down=(1,0)
+        left=(-1,0); right=(1,0); up=(0,-1); down=(0,1)
         directions = {left, right, up, down}
         rule_in_one_dir = dict.fromkeys(self.tiles, 0)       
         
