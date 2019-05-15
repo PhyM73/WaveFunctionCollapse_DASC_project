@@ -26,18 +26,19 @@ class ScanPattern:
         self.changable = (LR_Reflect, UD_Reflect, Rotatable)  #(是否允许对模式做左右对称，上下对称，旋转)
         self.width = self.image.width - N + 1
         self.height = self.image.height - N + 1
-        self.matrix = self.image2matrix()  #由pattern构成的矩阵
-        self.patterns, self.weights = self.build_patterns()
-        self.num_matrix = self.build_num_matrix()  #将pattern用它在patterns中的index表示
+        # self.matrix = self.image2matrix()  #由pattern构成的矩阵
+        # self.patterns, self.weights = self.build_patterns()
+        self.matrix, self.patterns, self.weights = self.build()
+        # self.num_matrix = self.build_num_matrix()  #将pattern用它在patterns中的index表示
         self.count = len(self.patterns)  #pattern总数
         self.rules = self.get_rules()
 
-    def image2matrix(self):
-        matrix = [[None] * self.height for _ in range(self.width)]
-        for x in range(self.width):
-            for y in range(self.height):
-                matrix[x][y] = self.get_pattern((x, y))
-        return matrix
+    # def image2matrix(self):
+    #     matrix = [[None] * self.height for _ in range(self.width)]
+    #     for x in range(self.width):
+    #         for y in range(self.height):
+    #             matrix[x][y] = self.get_pattern((x, y))
+    #     return matrix
 
     def get_pattern(self, position):
         # 以(x,y)为左上顶点构建pattern
@@ -49,17 +50,15 @@ class ScanPattern:
                 pattern[x1][y1] = self.image.getpixel((x + x1, y + y1))
         return pattern
 
-    def build_num_matrix(self):
-        num_matrix = [[None] * self.height for _ in range(self.width)]
-        for x in range(self.width):
-            for y in range(self.height):
-                num_matrix[x][y] = self.patterns.index(self.matrix[x][y])
-        return num_matrix
+    # def build_num_matrix(self):
+    #     num_matrix = [[None] * self.height for _ in range(self.width)]
+    #     for x in range(self.width):
+    #         for y in range(self.height):
+    #             num_matrix[x][y] = self.patterns.index(self.matrix[x][y])
+    #     return num_matrix
 
     def build_patterns(self):
-        '''
-        构建并返回patterns和weights
-        '''
+        '''构建并返回patterns和weights'''
 
         def LR_Reflect(pattern):  #对pattern做左右对称
             return list(reversed(pattern))
@@ -123,6 +122,75 @@ class ScanPattern:
             patterns, weights = extend(patterns, weights, changable)
         return patterns, weights
 
+    def build(self):
+        '''将输入的图像转为矩阵，并构建patterns和weights'''
+        patterns = []
+        weights = dict()
+        matrix = [[None] * self.height for _ in range(self.width)]
+        changable = self.changable
+        N = self.N
+        # 基于样图构造patterns与weights
+        for x in range(self.width):
+            for y in range(self.height):
+                pattern = self.get_pattern((x, y))
+                try:
+                    i = patterns.index(pattern)
+                    matrix[x][y] = i
+                    weights[i] += 1
+                except ValueError:
+                    patterns.append(pattern)
+                    matrix[x][y] = len(patterns) - 1
+                    weights[len(patterns) - 1] = 1
+
+        def LR_Reflect(pattern):  #对pattern做左右对称
+            return list(reversed(pattern))
+
+        def UD_Reflect(pattern):  #对pattern做上下对称
+            return [list(reversed(pattern[i])) for i in range(N)]
+
+        def Rotated(pattern):
+            #对pattern做旋转、转置，返回一个由转置、旋转90°、270°、转置并旋转180°后的pattern组成的list
+            def transposition(pattern):  #将一个pattern转置
+                temp = [[None] * N for _ in range(N)]
+                for x in range(N):
+                    for y in range(N):
+                        temp[y][x] = pattern[x][y]
+                return temp
+
+            p1 = transposition(pattern)
+            p2 = LR_Reflect(p1)
+            p3 = UD_Reflect(p1)
+            p4 = UD_Reflect(p2)
+            return [p1, p2, p3, p4]
+
+        def extend(patterns, weights, changable):
+            # 如果允许，基于图中提取的pattern通过对称、旋转、转置等变换构造更多的pattern,构造出的pattern拥有与它们的来源相同的weight
+            temp_patterns, temp_weights = patterns[:], weights
+            weights = dict.fromkeys(range(len(patterns)), 0)
+            patterns = patterns
+            for pattern in temp_patterns:
+                current_patterns = [pattern]  #current_patterns = [当前pattern，左右对称，上下左右对称，上下对称，转置，旋转90°，旋转270°，转置并旋转180°]
+                if changable[0]:
+                    current_patterns.append(LR_Reflect(current_patterns[0]))
+                if changable[1] and changable[0]:
+                    current_patterns.append(UD_Reflect(current_patterns[1]))
+                if changable[1]:
+                    current_patterns.append(UD_Reflect(current_patterns[0]))
+                if changable[2]:
+                    current_patterns.extend(Rotated(current_patterns[0]))
+                for each in current_patterns:
+                    if each not in patterns:
+                        patterns.append(each)
+                        weights[patterns.index(each)] = temp_weights[temp_patterns.index(pattern)]
+                    else:
+                        weights[patterns.index(each)] += temp_weights[temp_patterns.index(pattern)]
+            return patterns, weights
+
+        if sum(changable):
+            # 允许变换，对patterns进行拓展
+            patterns, weights = extend(patterns, weights, changable)
+        return matrix, patterns, weights
+
     def get_rules(self):
         '''
         如果不允许对称及旋转变换，即需要更严格的规则，则处理num_matrix得到规则
@@ -143,7 +211,8 @@ class ScanPattern:
                         x1 = x + directions[d][0]
                         y1 = y + directions[d][1]
                         if x1 >= 0 and x1 < self.width and y1 >= 0 and y1 < self.height:
-                            rules[d][self.num_matrix[x][y]].add(self.num_matrix[x1][y1])
+                            # rules[d][self.num_matrix[x][y]].add(self.num_matrix[x1][y1])
+                            rules[d][self.matrix[x][y]].add(self.matrix[x1][y1])
         else:
             # 允许变换，基于patterns得到规则
             N = self.N
