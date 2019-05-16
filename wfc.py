@@ -5,191 +5,427 @@ try:
 except:
     from PIL import Image
 
+# class ScanPattern:
+#     """
+#     扫描输入的图片，读取图中的模式及其出现的频率，收集不同模式之间的邻近关系。
 
-class ScanPattern:
+#     将输入的图片转化为由 N*N 的模式(pattern)组成的矩阵，通过遍历的方式记录各模式的出现频率，如果允许对称、旋转处理，对所有模式做变换得到更多模式。
+
+#     主要属性：
+#         matrix:输入图像转为pattern
+#         patterns:{p1:i1, p2:i2, ...}        记录所有的模式
+#         revpatterns:{i1:p1, i2:p2, ...}
+#         weights:[w1, w2, ...]     记录模式对应的频率(权重)
+#         rules:[[{p1, p2, ...}, { set }, ], [... ], ... ]        记录每个模式在各个方向上可以匹配的模式
+#     """
+
+#     def __init__(self, image_path, N=3, LR_Reflect=False, UD_Reflect=False, Rotatable=False):
+#         self.image = Image.open(image_path)  #打开图片
+#         self.N = N  #模式的大小
+#         self.changable = (LR_Reflect, UD_Reflect, Rotatable)  #(是否允许对模式做左右对称，上下对称，旋转)
+#         self.width = self.image.width - N + 1
+#         self.height = self.image.height - N + 1
+
+#         self.build()
+
+#         # self.matrix, self.patterns, self.weights = self.build()
+#         # self.matrix = self.image2matrix()  #由pattern构成的矩阵
+#         # self.patterns, self.weights = self.build_patterns()
+#         # self.num_matrix = self.build_num_matrix()  #将pattern用它在patterns中的index表示
+#         # self.count = len(self.patterns)  #pattern总数
+#         self.rules = self.get_rules()
+
+#     # def image2matrix(self):
+#     #     matrix = [[None] * self.height for _ in range(self.width)]
+#     #     for x in range(self.width):
+#     #         for y in range(self.height):
+#     #             matrix[x][y] = self.get_pattern((x, y))
+#     #     return matrix
+
+#     def get_pattern(self, position):
+#         # 以(x,y)为左上顶点构建pattern
+#         x, y = position[0], position[1]
+#         N = self.N
+#         pattern = [[None] * N for _ in range(N)]
+#         for x1 in range(N):
+#             for y1 in range(N):
+#                 pattern[x1][y1] = self.image.getpixel((x + x1, y + y1))
+#         return pattern
+
+#     # def build_num_matrix(self):
+#     #     num_matrix = [[None] * self.height for _ in range(self.width)]
+#     #     for x in range(self.width):
+#     #         for y in range(self.height):
+#     #             num_matrix[x][y] = self.patterns.index(self.matrix[x][y])
+#     #     return num_matrix
+
+#     def build_patterns(self):
+#         '''构建并返回patterns和weights'''
+
+#         def LR_Reflect(pattern):  #对pattern做左右对称
+#             return list(reversed(pattern))
+
+#         def UD_Reflect(pattern):  #对pattern做上下对称
+#             return [list(reversed(pattern[i])) for i in range(N)]
+
+#         def Rotated(pattern):
+#             #对pattern做旋转、转置，返回一个由转置、旋转90°、270°、转置并旋转180°后的pattern组成的list
+#             def transposition(pattern):  #将一个pattern转置
+#                 temp = [[None] * N for _ in range(N)]
+#                 for x in range(N):
+#                     for y in range(N):
+#                         temp[y][x] = pattern[x][y]
+#                 return temp
+
+#             p1 = transposition(pattern)
+#             p2 = LR_Reflect(p1)
+#             p3 = UD_Reflect(p1)
+#             p4 = UD_Reflect(p2)
+#             return [p1, p2, p3, p4]
+
+#         def extend(patterns, weights, changable):
+#             # 如果允许，基于图中提取的pattern通过对称、旋转、转置等变换构造更多的pattern,构造出的pattern拥有与它们的来源相同的weight
+#             temp_patterns, temp_weights = patterns[:], weights
+#             weights = dict.fromkeys(range(len(patterns)), 0)
+#             patterns = patterns
+#             for pattern in temp_patterns:
+#                 current_patterns = [pattern]  #current_patterns = [当前pattern，左右对称，上下左右对称，上下对称，转置，旋转90°，旋转270°，转置并旋转180°]
+#                 if changable[0]:
+#                     current_patterns.append(LR_Reflect(current_patterns[0]))
+#                 if changable[1] and changable[0]:
+#                     current_patterns.append(UD_Reflect(current_patterns[1]))
+#                 if changable[1]:
+#                     current_patterns.append(UD_Reflect(current_patterns[0]))
+#                 if changable[2]:
+#                     current_patterns.extend(Rotated(current_patterns[0]))
+#                 for each in current_patterns:
+#                     if each not in patterns:
+#                         patterns.append(each)
+#                         weights[patterns.index(each)] = temp_weights[temp_patterns.index(pattern)]
+#                     else:
+#                         weights[patterns.index(each)] += temp_weights[temp_patterns.index(pattern)]
+#             return patterns, weights
+
+#         patterns = []
+#         weights = dict()
+#         changable = self.changable
+#         N = self.N
+#         # 基于样图构造patterns与weights
+#         for x in range(self.width):
+#             for y in range(self.height):
+#                 pattern = self.matrix[x][y]
+#                 if pattern not in patterns:
+#                     patterns.append(pattern)
+#                     weights[patterns.index(pattern)] = 1
+#                 else:
+#                     weights[patterns.index(pattern)] += 1
+#         if sum(changable):
+#             # 允许变换，对patterns进行拓展
+#             patterns, weights = extend(patterns, weights, changable)
+#         return patterns, weights
+
+#     def build(self):
+#         '''将输入的图像转为矩阵，并构建patterns和weights'''
+#         patterns = {}
+#         weights = []
+#         matrix = [[None] * self.height for _ in range(self.width)]
+#         N = self.N
+#         index = 0
+#         for x in range(self.width):
+#             for y in range(self.height):
+#                 pattern = self.get_pattern((x, y))
+#                 try:
+#                     i = patterns[pattern]
+#                     matrix[x][y] = i
+#                     weights[i] += 1
+#                 except KeyError:
+#                     patterns[pattern] = index
+#                     matrix[x][y] = index
+#                     weights.append(1)
+#                     index += 1
+
+#         def LR_Reflect(pattern):  #对pattern做左右对称
+#             return list(reversed(pattern))
+
+#         def UD_Reflect(pattern):  #对pattern做上下对称
+#             return [list(reversed(pattern[i])) for i in range(N)]
+
+#         def Rotated(pattern):
+#             #对pattern做旋转、转置，返回一个由转置、旋转90°、270°、转置并旋转180°后的pattern组成的list
+#             def transposition(pattern):  #将一个pattern转置
+#                 temp = [[None] * N for _ in range(N)]
+#                 for x in range(N):
+#                     for y in range(N):
+#                         temp[y][x] = pattern[x][y]
+#                 return temp
+
+#             p1 = transposition(pattern)
+#             p2 = LR_Reflect(p1)
+#             p3 = UD_Reflect(p1)
+#             p4 = UD_Reflect(p2)
+#             return [p1, p2, p3, p4]
+
+#         def extend(patterns, weights, changable):
+#             # 如果允许，基于图中提取的pattern通过对称、旋转、转置等变换构造更多的pattern,构造出的pattern拥有与它们的来源相同的weight
+#             temp_patterns, temp_weights = patterns[:], weights
+#             weights = dict.fromkeys(range(len(patterns)), 0)
+#             patterns = patterns
+#             for pattern in temp_patterns:
+#                 current_patterns = [pattern]  #current_patterns = [当前pattern，左右对称，上下左右对称，上下对称，转置，旋转90°，旋转270°，转置并旋转180°]
+#                 if changable[0]:
+#                     current_patterns.append(LR_Reflect(current_patterns[0]))
+#                 if changable[1] and changable[0]:
+#                     current_patterns.append(UD_Reflect(current_patterns[1]))
+#                 if changable[1]:
+#                     current_patterns.append(UD_Reflect(current_patterns[0]))
+#                 if changable[2]:
+#                     current_patterns.extend(Rotated(current_patterns[0]))
+#                 for each in current_patterns:
+#                     if each not in patterns:
+#                         patterns.append(each)
+#                         weights[patterns.index(each)] = temp_weights[temp_patterns.index(pattern)]
+#                     else:
+#                         weights[patterns.index(each)] += temp_weights[temp_patterns.index(pattern)]
+#             return patterns, weights
+
+#         # if sum(changable):
+#         # 允许变换，对patterns进行拓展
+#         # patterns, weights = extend(patterns, weights, changable)
+#         # return matrix, patterns, weights
+#         # self.patterns = patterns
+#         # self.weights = weights
+#         # self.matrix = matrix
+
+#     def get_rules(self):
+#         '''
+#         如果不允许对称及旋转变换，即需要更严格的规则，则处理num_matrix得到规则
+
+#         如果允许变换，则通过比对每个pattern在某个方向是否可以和其他pattern重合来得到规则，这样得到的规则可能含有样图中不包含的情况
+#         '''
+#         rules = [[set() for _ in range(self.count)] for _ in range(4)]
+#         left = (-1, 0)
+#         right = (1, 0)
+#         up = (0, -1)
+#         down = (0, 1)
+#         directions = [left, right, up, down]
+#         if not sum(self.changable):
+#             # 不允许变换，基于样图得到规则
+#             for x in range(self.width):
+#                 for y in range(self.height):
+#                     for d in range(4):
+#                         x1 = x + directions[d][0]
+#                         y1 = y + directions[d][1]
+#                         if x1 >= 0 and x1 < self.width and y1 >= 0 and y1 < self.height:
+#                             # rules[d][self.num_matrix[x][y]].add(self.num_matrix[x1][y1])
+#                             rules[d][self.matrix[x][y]].add(self.matrix[x1][y1])
+#         else:
+#             # 允许变换，基于patterns得到规则
+#             N = self.N
+
+#             def connectable(pattern, other_pattern, d):
+#                 # 检测两个pattern在给定方向能否连接
+#                 for x in range(N):
+#                     for y in range(N):
+#                         x1 = x - directions[d][0]
+#                         y1 = y - directions[d][1]
+#                         if x1 >= 0 and x1 < N and y1 >= 0 and y1 < N and other_pattern[x1][y1] != pattern[x][y]:
+#                             return False
+#                 return True
+
+#             for pattern in range(self.count):  #pattern均用它在patterns中的index表示
+#                 for other_pattern in range(self.count):
+#                     for d in range(4):
+#                         if connectable(self.patterns[pattern], self.patterns[other_pattern], d):
+#                             rules[d][pattern].add(other_pattern)
+#         return rules
+#         #[[{p1,p2,p3,...}(第0种模式),{...}(1),{...},...](left), [{...},{...},...](right), [...](up), [...](down)]
+
+
+class ScanPattern1:
     """ 
-    扫描输入的图片，读取图中的模式及其出现的频率，收集不同模式之间的邻近关系。
+    扫描输入中的模式及其出现的频率，收集不同模式之间的邻近关系。
     
-    将输入的图片转化为由 N*N 的模式(pattern)组成的矩阵，通过遍历的方式记录各模式的出现频率，如果允许对称、旋转处理，对所有模式做变换得到更多模式。
+    模式(pattern)是进行分析的最小单元，大小为N*N。扫描输入矩阵，记录其中的模式并编号，将输入矩阵转化为由模式对应的编号组成的矩阵，同时记录模式间的邻近关系。如果允许对模式进行对称操作，将可能得到输入矩阵中不存在的模式。新模式之间的邻近关系同样由对称操作扩展。如果要求分析所有可能的邻近关系，则需要在各模式间进行邻近匹配。
      
     主要属性：
-        matrix:输入图像转为pattern
-        patterns:[p1, p2, ...]          记录所有的模式
-        weights:{p1:w1, p2:w2, ...}     记录模式对应的频率(权重)
-        rules:[[{p1, p2, ...}, { set }, ], [... ], ... ]        记录每个模式在各个方向上可以匹配的模式
-
+        patterns:{p1:i1, p2:i2, ...}        记录所有的模式
+        revpatterns:{i1:p1, i2:p2, ...}     
+        weights:[w1, w2, ...]     记录模式对应的频率(权重)
+        matrix
+        rules:[[{left}, {right}, {up}, {down}], [... ], ... ]        记录每个模式在各个方向上可以匹配的模式
     """
 
-    def __init__(self, image_path, N=3, LR_Reflect=False, UD_Reflect=False, Rotatable=False):
-        self.image = Image.open(image_path)  #打开图片
-        self.N = N  #模式的大小
-        self.changable = (LR_Reflect, UD_Reflect, Rotatable)  #(是否允许对模式做左右对称，上下对称，旋转)
-        self.width = self.image.width - N + 1
-        self.height = self.image.height - N + 1
-        # self.matrix = self.image2matrix()  #由pattern构成的矩阵
-        # self.patterns, self.weights = self.build_patterns()
-        self.matrix, self.patterns, self.weights = self.build()
-        # self.num_matrix = self.build_num_matrix()  #将pattern用它在patterns中的index表示
-        self.count = len(self.patterns)  #pattern总数
-        self.rules = self.get_rules()
+    def __init__(self, entry, N=3, LR_Reflect=False, UD_Reflect=False, symmetry=None, Rotatable=False, AllRules=False):
+        self.width, self.height = len(entry) - N + 1, len(entry[0]) - N + 1
+        self.N = N
 
-    # def image2matrix(self):
-    #     matrix = [[None] * self.height for _ in range(self.width)]
-    #     for x in range(self.width):
-    #         for y in range(self.height):
-    #             matrix[x][y] = self.get_pattern((x, y))
-    #     return matrix
+        self.patterns, self.weights, self.rules = {}, [], []
+        self.matrix = [[None] * self.height for _ in range(self.width)]
+        index = 0
+        for x in range(self.width):
+            for y in range(self.height):
+                pattern = self.get_pattern(entry, (x, y))
+                try:
+                    self.matrix[x][y] = self.patterns[pattern]
+                    self.weights[self.matrix[x][y]] += 1
+                except KeyError:
+                    self.patterns[pattern] = self.matrix[x][y] = index
+                    self.weights.append(1)
+                    self.rules.append([set(None) for _ in range(4)])
+                    index += 1
+                self.make_rule((x, y))
 
-    def get_pattern(self, position):
-        # 以(x,y)为左上顶点构建pattern
+        self.changable = (LR_Reflect, UD_Reflect, Rotatable)  # (是否允许对模式做左右对称，上下对称，旋转) 准备删掉
+
+        if not symmetry:
+            self.symmetry_op(symmetry)
+        if AllRules:
+            self.make_allrule()  # 对所有pattern扫描匹配
+
+        self.count = len(self.patterns)
+        self.revpatterns = {index: pattern for pattern, index in self.patterns}
+
+        # self.rules = self.get_rules()
+
+    def get_pattern(self, entry, position):
+        '''获取pattern'''
         x, y = position[0], position[1]
         N = self.N
-        pattern = [[None] * N for _ in range(N)]
-        for x1 in range(N):
-            for y1 in range(N):
-                pattern[x1][y1] = self.image.getpixel((x + x1, y + y1))
+        pattern = tuple(tuple(entry[x1][y:y + N]) for x1 in range(x, x + N))
         return pattern
 
-    # def build_num_matrix(self):
-    #     num_matrix = [[None] * self.height for _ in range(self.width)]
-    #     for x in range(self.width):
-    #         for y in range(self.height):
-    #             num_matrix[x][y] = self.patterns.index(self.matrix[x][y])
-    #     return num_matrix
+    def make_rule(self, position):
+        x, y = position[0], position[1]
+        if x > 0:
+            self.rules[self.matrix[x][y]][0].add(self.matrix[x - 1][y])
+            self.rules[self.matrix[x - 1][y]][1].add(self.matrix[x][y])
+        if y > 0:
+            self.rules[self.matrix[x][y]][2].add(self.matrix[x][y - 1])
+            self.rules[self.matrix[x][y - 1]][3].add(self.matrix[x][y])
 
-    def build_patterns(self):
-        '''构建并返回patterns和weights'''
+    def symmetry_op(self, symmetry):
 
-        def LR_Reflect(pattern):  #对pattern做左右对称
+        def horiz_reflect(pattern):  #对pattern做左右对称
             return list(reversed(pattern))
 
-        def UD_Reflect(pattern):  #对pattern做上下对称
-            return [list(reversed(pattern[i])) for i in range(N)]
+        def vert_reflect(pattern):  #对pattern做上下对称
+            return [list(reversed(pattern[i])) for i in range(len(pattern))]
 
-        def Rotated(pattern):
-            #对pattern做旋转、转置，返回一个由转置、旋转90°、270°、转置并旋转180°后的pattern组成的list
-            def transposition(pattern):  #将一个pattern转置
-                temp = [[None] * N for _ in range(N)]
-                for x in range(N):
-                    for y in range(N):
-                        temp[y][x] = pattern[x][y]
-                return temp
+        def diag_reflect(pattern):
+            N = len(pattern)
+            return [[pattern[y][x] for y in range(N)] for x in range(N)]
 
-            p1 = transposition(pattern)
-            p2 = LR_Reflect(p1)
-            p3 = UD_Reflect(p1)
-            p4 = UD_Reflect(p2)
-            return [p1, p2, p3, p4]
+        def skew_reflect(pattern):
+            N = len(pattern)
+            return [[pattern[N - y - 1][N - x - 1] for y in range(N)] for x in range(N)]
 
-        def extend(patterns, weights, changable):
-            # 如果允许，基于图中提取的pattern通过对称、旋转、转置等变换构造更多的pattern,构造出的pattern拥有与它们的来源相同的weight
-            temp_patterns, temp_weights = patterns[:], weights
-            weights = dict.fromkeys(range(len(patterns)), 0)
-            patterns = patterns
-            for pattern in temp_patterns:
-                current_patterns = [pattern]  #current_patterns = [当前pattern，左右对称，上下左右对称，上下对称，转置，旋转90°，旋转270°，转置并旋转180°]
-                if changable[0]:
-                    current_patterns.append(LR_Reflect(current_patterns[0]))
-                if changable[1] and changable[0]:
-                    current_patterns.append(UD_Reflect(current_patterns[1]))
-                if changable[1]:
-                    current_patterns.append(UD_Reflect(current_patterns[0]))
-                if changable[2]:
-                    current_patterns.extend(Rotated(current_patterns[0]))
-                for each in current_patterns:
-                    if each not in patterns:
-                        patterns.append(each)
-                        weights[patterns.index(each)] = temp_weights[temp_patterns.index(pattern)]
-                    else:
-                        weights[patterns.index(each)] += temp_weights[temp_patterns.index(pattern)]
-            return patterns, weights
+        def birotate(pattern):
+            N = len(pattern)
+            return [[pattern[N - x - 1][N - y - 1] for y in range(N)] for x in range(N)]
 
-        patterns = []
-        weights = dict()
-        changable = self.changable
-        N = self.N
-        # 基于样图构造patterns与weights
-        for x in range(self.width):
-            for y in range(self.height):
-                pattern = self.matrix[x][y]
-                if pattern not in patterns:
-                    patterns.append(pattern)
-                    weights[patterns.index(pattern)] = 1
-                else:
-                    weights[patterns.index(pattern)] += 1
-        if sum(changable):
-            # 允许变换，对patterns进行拓展
-            patterns, weights = extend(patterns, weights, changable)
-        return patterns, weights
+        def quadrotate(pattern):
+            p = skew_reflect(pattern)
+            return [p, horiz_reflect(p), vert_reflect(p)]
 
-    def build(self):
-        '''将输入的图像转为矩阵，并构建patterns和weights'''
-        patterns = []
-        weights = dict()
-        matrix = [[None] * self.height for _ in range(self.width)]
-        changable = self.changable
-        N = self.N
-        # 基于样图构造patterns与weights
-        for x in range(self.width):
-            for y in range(self.height):
-                pattern = self.get_pattern((x, y))
+        symmetry_operate = {
+            'hr': horiz_reflect,
+            'vr': vert_reflect,
+            'dr': diag_reflect,
+            'sr': skew_reflect,
+            'bro': birotate,
+            'qro': quadrotate
+        }
+
+        prime_patterns = self.patterns.copy()
+        index = len(prime_patterns)
+        for pattern in prime_patterns:
+            for sym in symmetry:
+                p = symmetry_operate[sym](pattern)
                 try:
-                    i = patterns.index(pattern)
-                    matrix[x][y] = i
-                    weights[i] += 1
-                except ValueError:
-                    patterns.append(pattern)
-                    matrix[x][y] = len(patterns) - 1
-                    weights[len(patterns) - 1] = 1
+                    self.weights[prime_patterns[p]] += 1
+                except KeyError:
+                    self.patterns[p] = index
+                    self.weights.append(1)
+                    # self.rules.append([set(None) for _ in range(4)])
+                    index += 1
 
-        def LR_Reflect(pattern):  #对pattern做左右对称
-            return list(reversed(pattern))
+    def make_allrule(self):
+        pass
 
-        def UD_Reflect(pattern):  #对pattern做上下对称
-            return [list(reversed(pattern[i])) for i in range(N)]
+    # def build(self, entry):
+    #     '''将输入的图像转为矩阵，并构建patterns和weights'''
 
-        def Rotated(pattern):
-            #对pattern做旋转、转置，返回一个由转置、旋转90°、270°、转置并旋转180°后的pattern组成的list
-            def transposition(pattern):  #将一个pattern转置
-                temp = [[None] * N for _ in range(N)]
-                for x in range(N):
-                    for y in range(N):
-                        temp[y][x] = pattern[x][y]
-                return temp
+    #     # patterns, revpatterns, weights = {}, {}, []
+    #     # matrix = [[None] * self.height for _ in range(self.width)]
+    #     N = self.N
 
-            p1 = transposition(pattern)
-            p2 = LR_Reflect(p1)
-            p3 = UD_Reflect(p1)
-            p4 = UD_Reflect(p2)
-            return [p1, p2, p3, p4]
+    #     # index = 0
+    #     # for x in range(self.width):
+    #     #     for y in range(self.height):
+    #     #         pattern = self.get_pattern(entry, (x, y))
+    #     #         try:
+    #     #             i = patterns[pattern]
+    #     #             weights[i] += 1
+    #     #             matrix[x][y] = i
+    #     #         except KeyError:
+    #     #             patterns[pattern] = index
+    #     #             revpatterns[index] = pattern
+    #     #             matrix[x][y] = index
+    #     #             weights.append(1)
+    #     #             index += 1
 
-        def extend(patterns, weights, changable):
-            # 如果允许，基于图中提取的pattern通过对称、旋转、转置等变换构造更多的pattern,构造出的pattern拥有与它们的来源相同的weight
-            temp_patterns, temp_weights = patterns[:], weights
-            weights = dict.fromkeys(range(len(patterns)), 0)
-            patterns = patterns
-            for pattern in temp_patterns:
-                current_patterns = [pattern]  #current_patterns = [当前pattern，左右对称，上下左右对称，上下对称，转置，旋转90°，旋转270°，转置并旋转180°]
-                if changable[0]:
-                    current_patterns.append(LR_Reflect(current_patterns[0]))
-                if changable[1] and changable[0]:
-                    current_patterns.append(UD_Reflect(current_patterns[1]))
-                if changable[1]:
-                    current_patterns.append(UD_Reflect(current_patterns[0]))
-                if changable[2]:
-                    current_patterns.extend(Rotated(current_patterns[0]))
-                for each in current_patterns:
-                    if each not in patterns:
-                        patterns.append(each)
-                        weights[patterns.index(each)] = temp_weights[temp_patterns.index(pattern)]
-                    else:
-                        weights[patterns.index(each)] += temp_weights[temp_patterns.index(pattern)]
-            return patterns, weights
+    #     def LR_Reflect(pattern):  #对pattern做左右对称
+    #         return list(reversed(pattern))
 
-        if sum(changable):
-            # 允许变换，对patterns进行拓展
-            patterns, weights = extend(patterns, weights, changable)
-        return matrix, patterns, weights
+    #     def UD_Reflect(pattern):  #对pattern做上下对称
+    #         return [list(reversed(pattern[i])) for i in range(N)]
+
+    #     def Rotated(pattern):
+    #         #对pattern做旋转、转置，返回一个由转置、旋转90°、270°、转置并旋转180°后的pattern组成的list
+    #         def transposition(pattern):  #将一个pattern转置
+    #             temp = [[None] * N for _ in range(N)]
+    #             for x in range(N):
+    #                 for y in range(N):
+    #                     temp[y][x] = pattern[x][y]
+    #             return temp
+
+    #         p1 = transposition(pattern)
+    #         p2 = LR_Reflect(p1)
+    #         p3 = UD_Reflect(p1)
+    #         p4 = UD_Reflect(p2)
+    #         return [p1, p2, p3, p4]
+
+    # def extend(patterns, weights, changable):
+    #     # 如果允许，基于图中提取的pattern通过对称、旋转、转置等变换构造更多的pattern,构造出的pattern拥有与它们的来源相同的weight
+    #     temp_patterns, temp_weights = patterns[:], weights
+    #     weights = dict.fromkeys(range(len(patterns)), 0)
+    #     patterns = patterns
+    #     for pattern in temp_patterns:
+    #         current_patterns = [pattern]  #current_patterns = [当前pattern，左右对称，上下左右对称，上下对称，转置，旋转90°，旋转270°，转置并旋转180°]
+    #         if changable[0]:
+    #             current_patterns.append(LR_Reflect(current_patterns[0]))
+    #         if changable[1] and changable[0]:
+    #             current_patterns.append(UD_Reflect(current_patterns[1]))
+    #         if changable[1]:
+    #             current_patterns.append(UD_Reflect(current_patterns[0]))
+    #         if changable[2]:
+    #             current_patterns.extend(Rotated(current_patterns[0]))
+    #         for each in current_patterns:
+    #             if each not in patterns:
+    #                 patterns.append(each)
+    #                 weights[patterns.index(each)] = temp_weights[temp_patterns.index(pattern)]
+    #             else:
+    #                 weights[patterns.index(each)] += temp_weights[temp_patterns.index(pattern)]
+    #     return patterns, weights
+
+    # if sum(changable):
+    # 允许变换，对patterns进行拓展
+    # patterns, weights = extend(patterns, weights, changable)
+    # return matrix, patterns, weights
+
+    # self.patterns, self.revpatterns = patterns, revpatterns
+    # self.weights = weights
+    # self.matrix = matrix
 
     def get_rules(self):
         '''
