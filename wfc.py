@@ -255,7 +255,7 @@ class ScanPattern1:
         rules:[[{left}, {right}, {up}, {down}], [... ], ... ]        记录每个模式在各个方向上可以匹配的模式
     """
 
-    def __init__(self, entry, N=3, LR_Reflect=False, UD_Reflect=False, symmetry=None, Rotatable=False, AllRules=False):
+    def __init__(self, entry, N=3, symmetry=None, AllRules=False, LR_Reflect=False, UD_Reflect=False, Rotatable=False):
         self.width, self.height = len(entry) - N + 1, len(entry[0]) - N + 1
         self.N = N
 
@@ -275,17 +275,15 @@ class ScanPattern1:
                     index += 1
                 self.make_rule((x, y))
 
-        self.changable = (LR_Reflect, UD_Reflect, Rotatable)  # (是否允许对模式做左右对称，上下对称，旋转) 准备删掉
+        self.changable = (LR_Reflect, UD_Reflect, Rotatable)  # (是否允许对模式做左右对称，上下对称，旋转) 准备删掉, 用symmetry来替代这部分的功能
 
         if not symmetry:
-            self.symmetry_op(symmetry)
-        if AllRules:
-            self.make_allrule()  # 对所有pattern扫描匹配
-
-        self.count = len(self.patterns)
+            self.symmetry_operate(symmetry)
         self.revpatterns = {index: pattern for pattern, index in self.patterns}
+        self.count = len(self.patterns)
 
-        # self.rules = self.get_rules()
+        if N > 1 and AllRules:
+            self.make_allrule()  # 对所有pattern扫描匹配
 
     def get_pattern(self, entry, position):
         '''获取pattern'''
@@ -303,31 +301,32 @@ class ScanPattern1:
             self.rules[self.matrix[x][y]][2].add(self.matrix[x][y - 1])
             self.rules[self.matrix[x][y - 1]][3].add(self.matrix[x][y])
 
-    def symmetry_op(self, symmetry):
+    def symmetry_operate(self, symmetry):
+        '''根据symmetry的要求对patterns和rules做对称操作'''  # 拟考虑按对称性组合分类来操作
 
-        def horiz_reflect(pattern):  #对pattern做左右对称
+        def horiz_reflect(pattern):  # 对pattern做水平反射
             return list(reversed(pattern))
 
-        def vert_reflect(pattern):  #对pattern做上下对称
+        def vert_reflect(pattern):  # 对pattern做垂直反射
             return [list(reversed(pattern[i])) for i in range(len(pattern))]
 
-        def diag_reflect(pattern):
+        def diag_reflect(pattern):  # 对pattern做对角反射
             N = len(pattern)
             return [[pattern[y][x] for y in range(N)] for x in range(N)]
 
-        def skew_reflect(pattern):
+        def skew_reflect(pattern):  # 对pattern做反对角反射
             N = len(pattern)
             return [[pattern[N - y - 1][N - x - 1] for y in range(N)] for x in range(N)]
 
-        def birotate(pattern):
+        def birotate(pattern):  # 旋转180°
             N = len(pattern)
             return [[pattern[N - x - 1][N - y - 1] for y in range(N)] for x in range(N)]
 
-        def quadrotate(pattern):
+        def quadrotate(pattern):  # 旋转90°,180°,270°
             p = skew_reflect(pattern)
             return [p, horiz_reflect(p), vert_reflect(p)]
 
-        symmetry_operate = {
+        symmetry_op = {
             'hr': horiz_reflect,
             'vr': vert_reflect,
             'dr': diag_reflect,
@@ -340,7 +339,7 @@ class ScanPattern1:
         index = len(prime_patterns)
         for pattern in prime_patterns:
             for sym in symmetry:
-                p = symmetry_operate[sym](pattern)
+                p = symmetry_op[sym](pattern)
                 try:
                     self.weights[prime_patterns[p]] += 1
                 except KeyError:
@@ -350,7 +349,20 @@ class ScanPattern1:
                     index += 1
 
     def make_allrule(self):
-        pass
+        assert self.N > 1
+
+        def overlap(pattern1, pattern2, direction):
+            if direction == 0:
+                return [line[:-1] for line in pattern1] == [line[1:] for line in pattern2]
+            if direction == 2:
+                return pattern1[:-1] == pattern2[1:]
+
+        for index in range(len(self.patterns)):
+            for ind in range(index):
+                for direction in (0, 2):
+                    if overlap(self.revpatterns[index], self.revpatterns[ind], direction):
+                        self.rules[index][direction].add(ind)
+                        self.rules[ind][direction + 1].add(index)
 
     # def build(self, entry):
     #     '''将输入的图像转为矩阵，并构建patterns和weights'''
@@ -427,49 +439,49 @@ class ScanPattern1:
     # self.weights = weights
     # self.matrix = matrix
 
-    def get_rules(self):
-        '''
-        如果不允许对称及旋转变换，即需要更严格的规则，则处理num_matrix得到规则
+    # def get_rules(self):
+    #     '''
+    #     如果不允许对称及旋转变换，即需要更严格的规则，则处理num_matrix得到规则
 
-        如果允许变换，则通过比对每个pattern在某个方向是否可以和其他pattern重合来得到规则，这样得到的规则可能含有样图中不包含的情况
-        '''
-        rules = [[set() for _ in range(self.count)] for _ in range(4)]
-        left = (-1, 0)
-        right = (1, 0)
-        up = (0, -1)
-        down = (0, 1)
-        directions = [left, right, up, down]
-        if not sum(self.changable):
-            # 不允许变换，基于样图得到规则
-            for x in range(self.width):
-                for y in range(self.height):
-                    for d in range(4):
-                        x1 = x + directions[d][0]
-                        y1 = y + directions[d][1]
-                        if x1 >= 0 and x1 < self.width and y1 >= 0 and y1 < self.height:
-                            # rules[d][self.num_matrix[x][y]].add(self.num_matrix[x1][y1])
-                            rules[d][self.matrix[x][y]].add(self.matrix[x1][y1])
-        else:
-            # 允许变换，基于patterns得到规则
-            N = self.N
+    #     如果允许变换，则通过比对每个pattern在某个方向是否可以和其他pattern重合来得到规则，这样得到的规则可能含有样图中不包含的情况
+    #     '''
+    #     rules = [[set() for _ in range(self.count)] for _ in range(4)]
+    #     left = (-1, 0)
+    #     right = (1, 0)
+    #     up = (0, -1)
+    #     down = (0, 1)
+    #     directions = [left, right, up, down]
+    #     if not sum(self.changable):
+    #         # 不允许变换，基于样图得到规则
+    #         for x in range(self.width):
+    #             for y in range(self.height):
+    #                 for d in range(4):
+    #                     x1 = x + directions[d][0]
+    #                     y1 = y + directions[d][1]
+    #                     if x1 >= 0 and x1 < self.width and y1 >= 0 and y1 < self.height:
+    #                         # rules[d][self.num_matrix[x][y]].add(self.num_matrix[x1][y1])
+    #                         rules[d][self.matrix[x][y]].add(self.matrix[x1][y1])
+    #     else:
+    #         # 允许变换，基于patterns得到规则
+    #         N = self.N
 
-            def connectable(pattern, other_pattern, d):
-                # 检测两个pattern在给定方向能否连接
-                for x in range(N):
-                    for y in range(N):
-                        x1 = x - directions[d][0]
-                        y1 = y - directions[d][1]
-                        if x1 >= 0 and x1 < N and y1 >= 0 and y1 < N and other_pattern[x1][y1] != pattern[x][y]:
-                            return False
-                return True
+    #         def connectable(pattern, other_pattern, d):
+    #             # 检测两个pattern在给定方向能否连接
+    #             for x in range(N):
+    #                 for y in range(N):
+    #                     x1 = x - directions[d][0]
+    #                     y1 = y - directions[d][1]
+    #                     if x1 >= 0 and x1 < N and y1 >= 0 and y1 < N and other_pattern[x1][y1] != pattern[x][y]:
+    #                         return False
+    #             return True
 
-            for pattern in range(self.count):  #pattern均用它在patterns中的index表示
-                for other_pattern in range(self.count):
-                    for d in range(4):
-                        if connectable(self.patterns[pattern], self.patterns[other_pattern], d):
-                            rules[d][pattern].add(other_pattern)
-        return rules
-        #[[{p1,p2,p3,...}(第0种模式),{...}(1),{...},...](left), [{...},{...},...](right), [...](up), [...](down)]
+    #         for pattern in range(self.count):  #pattern均用它在patterns中的index表示
+    #             for other_pattern in range(self.count):
+    #                 for d in range(4):
+    #                     if connectable(self.patterns[pattern], self.patterns[other_pattern], d):
+    #                         rules[d][pattern].add(other_pattern)
+    #     return rules
+    #     #[[{p1,p2,p3,...}(第0种模式),{...}(1),{...},...](left), [{...},{...},...](right), [...](up), [...](down)]
 
 
 # i = ScanPattern(r'image_path', 3, True, True, True)
@@ -534,7 +546,7 @@ class ScanTile:
         return self.tiles, self.weights, self.rules
 
 
-#tiles, weights, rules = ScanTile(r'image_path').get_rules()
+# tiles, weights, rules = ScanTile(r'image_path').get_rules()
 
 
 class Lattice():
