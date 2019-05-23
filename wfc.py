@@ -14,47 +14,45 @@ class ScanPattern:
      
     主要属性：
         entry: 输入矩阵
-        patterns:{p1:i1, p2:i2, ...}        记录所有的模式
-        revpatterns:{i1:p1, i2:p2, ...}     
+        patterns:{p1:i1, p2:i2, ...}        记录所有的模式(后转为{i：p})    
         weights:[w1, w2, ...]     记录模式对应的频率(权重)
         matrix
-        rules:[[{left}, {right}, {up}, {down}], [... ], ... ]        记录每个模式在各个方向上可以匹配的模式
+        rules:[ [{left}, {right}, {up}, {down}], [... ], ... ]        记录每个模式在各个方向上可以匹配的模式
     """
 
-    def __init__(self, entry, N=3, symmetry=None, AllRules=False, LR_Reflect=False, UD_Reflect=False, Rotatable=False):
+    def __init__(self, entry, N=3, symmetry=None, Reflect=None, Rotate=None, AllRules=False):
         self.width, self.height = len(entry) - N + 1, len(entry[0]) - N + 1
-        self.N = N
 
         self.patterns, self.weights, self.rules = {}, [], []
         self.matrix = [[None] * self.height for _ in range(self.width)]
         index = 0
         for x in range(self.width):
             for y in range(self.height):
-                pattern = self.get_pattern(entry, (x, y))
+                pat = self.get_pattern(entry, (x, y), N=N)
                 try:
-                    self.matrix[x][y] = self.patterns[pattern]
+                    self.matrix[x][y] = self.patterns[pat]
                     self.weights[self.matrix[x][y]] += 1
                 except KeyError:
-                    self.patterns[pattern] = self.matrix[x][y] = index
+                    self.patterns[pat] = self.matrix[x][y] = index
                     self.weights.append(1)
                     self.rules.append([set() for _ in range(4)])
                     index += 1
                 self.make_rule((x, y))
+        self.prim = self.patterns.copy()
 
-        if symmetry != None:
-            self.symmetry_operate(symmetry)
-        self.revpatterns = {index: pattern for pattern, index in self.patterns.items()}
+        # if Reflect != None or Rotate != None:
+        #     self.symmetry_operate(Reflect,Rotate)
+        # if symmetry != None:
+        # self.symmetry_operate(symmetry)
+
+        self.patterns = {index: pattern for pattern, index in self.patterns.items()}
 
         if N > 1 and AllRules:
             self.make_allrule()  # 对所有pattern扫描匹配
 
-        # self.changable = (LR_Reflect, UD_Reflect, Rotatable)  # (是否允许对模式做左右对称，上下对称，旋转) 准备删掉, 用symmetry来替代这部分的功能
-        # self.count = len(self.patterns)
-
-    def get_pattern(self, entry, position):
+    def get_pattern(self, entry, position, N):
         '''获取以(x,y)为左上角的pattern'''
         x, y = position[0], position[1]
-        N = self.N
         return tuple(tuple(entry[x1][y:y + N]) for x1 in range(x, x + N))
 
     def make_rule(self, position):
@@ -68,53 +66,86 @@ class ScanPattern:
             self.rules[self.matrix[x][y]][2].add(self.matrix[x][y - 1])
             self.rules[self.matrix[x][y - 1]][3].add(self.matrix[x][y])
 
-    def symmetry_operate(self, symmetry):
-        '''根据symmetry的要求对patterns和rules做对称操作'''  # 拟考虑按对称性组合分类来操作
+    # def symmetry_operate(self, Reflect, Rotate):
+    #     '''根据Reflect和Rotate的要求对patterns和rules做对称操作'''  # 拟考虑按对称性组合分类来操作
+    #     def horiz_reflect(pattern):  # 对pattern做水平反射
+    #         return list(reversed(pattern))
 
-        def horiz_reflect(pattern):  # 对pattern做水平反射
-            return list(reversed(pattern))
+    #     def vert_reflect(pattern):  # 对pattern做垂直反射
+    #         return [list(reversed(pattern[i])) for i in range(len(pattern))]
 
-        def vert_reflect(pattern):  # 对pattern做垂直反射
-            return [list(reversed(pattern[i])) for i in range(len(pattern))]
+    #     def diag_reflect(pattern):  # 对pattern做对角反射
+    #         N = len(pattern)
+    #         return [[pattern[y][x] for y in range(N)] for x in range(N)]
 
-        def diag_reflect(pattern):  # 对pattern做对角反射
-            N = len(pattern)
-            return [[pattern[y][x] for y in range(N)] for x in range(N)]
+    #     def skew_reflect(pattern):  # 对pattern做反对角反射
+    #         N = len(pattern)
+    #         return [[pattern[N - y - 1][N - x - 1] for y in range(N)] for x in range(N)]
 
-        def skew_reflect(pattern):  # 对pattern做反对角反射
-            N = len(pattern)
-            return [[pattern[N - y - 1][N - x - 1] for y in range(N)] for x in range(N)]
+    #     def birotate(pattern):  # 旋转180°
+    #         N = len(pattern)
+    #         return [[pattern[N - x - 1][N - y - 1] for y in range(N)] for x in range(N)]
 
-        def birotate(pattern):  # 旋转180°
-            N = len(pattern)
-            return [[pattern[N - x - 1][N - y - 1] for y in range(N)] for x in range(N)]
+    #     def quadrotate(pattern):  # 旋转90°,180°,270°
+    #         p = skew_reflect(pattern)
+    #         return [p, horiz_reflect(p), vert_reflect(p)]
 
-        def quadrotate(pattern):  # 旋转90°,180°,270°
-            p = skew_reflect(pattern)
-            return [p, horiz_reflect(p), vert_reflect(p)]
+    #     symmetry_op = {
+    #         'hr': horiz_reflect,
+    #         'vr': vert_reflect,
+    #         'dr': diag_reflect,
+    #         'sr': skew_reflect,
+    #         'bro': birotate,
+    #         'qro': quadrotate
+    #     }
 
-        symmetry_op = {
-            'hr': horiz_reflect,
-            'vr': vert_reflect,
-            'dr': diag_reflect,
-            'sr': skew_reflect,
-            'bro': birotate,
-            'qro': quadrotate
-        }
+    # def rotate(times, ref=None):
+    #     if ref:
+    #         pass
+    #     elif times == 2:
+    #         pass
+    #     elif times == 4:
+    #         pass
+    #     else:
+    #         raise ValueError
 
-        prime_patterns = self.patterns.copy()
-        index = len(prime_patterns)
-        for pattern, ind in prime_patterns:
-            for sym in symmetry:
-                p = symmetry_op[sym](pattern)
-                try:
-                    self.weights[prime_patterns[p]] *= 2
-                except KeyError:
-                    self.patterns[p] = index
-                    self.weights.append(self.weights[ind])
-                    # self.rules.append([set(None) for _ in range(4)])
-                    # 需要根据对称性操作补上相应的规则
-                    index += 1
+    # if Rotate = None:
+    #     pass
+    # elif Reflect = None:
+    #     pass  # rotate(rotate)
+    # else:
+    #     if Rotate == 4:
+    #         pass
+    #     elif Rotate == 2:
+    #         pass
+    #     else:
+    #         raise ValueError
+
+    # prime_patterns = self.patterns.copy()
+    # index = len(prime_patterns)
+    # for pattern, ind in prime_patterns:
+    #     # for sym in symmetry:
+    #         p = symmetry_op[sym](pattern)
+    #         try:
+    #             self.weights[prime_patterns[p]] *= 2
+    #         except KeyError:
+    #             self.patterns[p] = index
+    #             self.weights.append(self.weights[ind])
+    #             # self.rules.append([set(None) for _ in range(4)])
+    #             # 需要根据对称性操作补上相应的规则
+    #             index += 1
+
+    # def rotate(self, times, ref=None,N=3):
+    #     index = len(self.patterns)
+    #     if ref:
+    #         pass
+    #     elif times == 2:
+    #         for pattern, ind in self.prim.items():
+    #             p=[[pattern[N - x - 1][N - y - 1] for y in range(N)] for x in range(N)]
+    #     elif times == 4:
+    #         pass
+    #     else:
+    #         raise ValueError
 
     def make_allrule(self):
         '''遍历patterns匹配所有规则'''
@@ -128,22 +159,9 @@ class ScanPattern:
         for index in range(len(self.patterns)):
             for ind in range(index):
                 for direction in (0, 2):
-                    if overlap(self.revpatterns[index], self.revpatterns[ind], direction):
+                    if overlap(self.patterns[index], self.patterns[ind], direction):
                         self.rules[index][direction].add(ind)
                         self.rules[ind][direction + 1].add(index)
-
-
-entry = [
-    ['L', 'L', 'L', 'L'],
-    ['L', 'L', 'L', 'L'],
-    ['L', 'L', 'L', 'L'],
-    ['L', 'C', 'C', 'L'],
-    ['C', 'S', 'S', 'C'],
-    ['S', 'S', 'S', 'S'],
-    ['S', 'S', 'S', 'S'],
-]
-s = ScanPattern(list(entry))
-print(s.width, s.height, s.weights)
 
 
 class ScanTile:
@@ -212,82 +230,142 @@ class Lattice():
 
     def __init__(self, state_space):
         # 格点至少具备两个属性：状态空间，熵
-        self.space = state_space  # state_space={state:wight}
+        self.space = state_space  # state_space={state:weight}
         self.entropy = Lattice.shannon(state_space)
 
+    def __len__(self):
+        if isinstance(self.space, int):
+            return 1
+        else:
+            return len(self.space)
+
     @staticmethod
-    def shannon(statespace):
+    def shannon(state_space):
         '''计算态空间的香农熵'''
-        if len(statespace) == 1:
+        if len(state_space) == 1:
             return 0
 
-        ws = sum(statespace.value())
-        return math.log(ws) - sum(map(lambda x: x * math.log(x), statespace.value())) / ws
+        ws = sum(state_space.values())
+        return math.log(ws) - sum(map(lambda x: x * math.log(x), state_space.values())) / ws
+
+
+class CollapseError(StopIteration):
+    pass
 
 
 class Wave():
-    '''体系波函数'''
+    '''体系波函数
+    
+    主要属性：
+        wave: 存储格点(lattice)的矩阵
+        rules: 承接输入的rules
+    '''
 
-    def __init__(self, size, state_space):
+    def __init__(self, size, charts):
         # 波函数为包含所有格点的矩阵
         self.width, self.height = size[0], size[1]
+        state_space = {state: charts.weights[state] for state in charts.patterns.keys()}
         self.wave = [[Lattice(state_space)] * size[0]] * size[1]
-        self.wait = []
+        self.rules = charts.rules
+
+        self.wait_to_collapse = []
         for i in range(size[0]):
             for j in range(size[1]):
-                self.wait.append((i, j))
+                self.wait_to_collapse.append((i, j))
 
     def __getitem__(self, index):
         return self.wave[index[0]][index[1]]
 
     def min_entropy_pos(self):
         '''寻找熵最小的格点的位置'''
-        x, y = self.wait[0][0], self.wait[0][1]
-        min_entropy = self.wave[x][y].entropy
-        for lattice in self.wait:
-            if self.wave[lattice[0]][lattice[1]].entropy == 0:
+        x, y = self.wait_to_collapse[0][0], self.wait_to_collapse[0][1]
+        min_entropy = self[x, y].entropy
+        for i in range(len(self.wait_to_collapse)):
+            lattice = self.wait_to_collapse[i]
+            if self[lattice[0], lattice[1]].entropy == 0:
                 continue
-            noise = random.random()
-            if self.wave[lattice[0]][lattice[1]].entropy - noise < min_entropy:
+            noise = random.random() / 1000
+            if self[lattice[0], lattice[1]].entropy - noise < min_entropy:
                 x, y = lattice[0], lattice[1]
-                min_entropy = self.wave[x][y].entropy - noise
+                min_entropy = self[x, y].entropy - noise
 
-        # for i in range(self.width):
-        # for j in range(self.height):
-        # # if self.wave[x][y].entropy == 0:
-        #     # continue
-        # noise = random.random()
-        # if self.wave[i][j].entropy - noise < min_entropy:
-        #     x, y = i, j
-        #     min_entropy = self.wave[x][y].entropy - noise
-        return x, y
+        return x, y, i
 
     def collapse(self):
         '''选择目前熵最小的格点，并随机塌缩'''
-        x, y = self.min_entropy_pos()
-        if len(self.wave[x][y].space) == 1:
-            self.wave[x][y].entropy == 0
-        elif len(self[x, y].space) > 1:
-            s = random.choices(self[x, y].space.keys(), weights=self[x, y].space.value())
-            self[x, y].space = {s, self[x, y].space[s]}
-            del self.wait[x * self.width + y]
+        x, y, index = self.min_entropy_pos()
+        if len(self[x, y]) == 1:
+            self[x, y].entropy == 0
+            self[x, y].space = list(self[x, y].space.keys())[0]
+        elif len(self[x, y]) > 1:
+            state = random.choices(list(self[x, y].space.keys()), weights=self[x, y].space.values())
+            self[x, y].space = state
+            del self.wait_to_collapse[index]
             self.propagate((x, y))
         else:
-            print('Restart')
-            pass
+            raise CollapseError
+
+    def neighbor(self, position):
+        n = [None for i in range(4)]
+        if position[0] > 0:
+            n[0] = (position[0] - 1, position[1])
+        if position[0] < self.width:
+            n[1] = (position[0] + 1, position[1])
+        if position[1] > 0:
+            n[2] = (position[0], position[1] - 1)
+        if position[1] < self.height:
+            n[3] = (position[0], position[1] + 1)
+        return n
 
     def propagate(self, position):
         '''从给定位置处向周围传播塌缩'''
-        pass
+        nb = self.neighbor(position)
+        for i in range(4):
+            print(self[position].space[0])
+            s = self.rules[self[position].space[0]][i]
+            if nb[i] != None:
+                if len(self[nb[i]]) == 1:
+                    if self[nb[i]].space[0] not in s:
+                        raise CollapseError
+                else:
+                    s = s & set(self[nb[i]].space.keys())
+                    self[nb[i]].space = {state: self[nb[i]].space[state] for state in s}
+                    if len(nb) == 1:
+                        nb.space = list(nb.keys())
+                        nb.entropy = 0
 
     def observe(self):
         '''测量整个波函数'''
-        while self.isnot_all_collapsed():
+        while self.wait_to_collapse:
             self.collapse()
+        return self.wave
 
-    def isnot_all_collapsed(self):
-        for x in self.width:
-            for y in self.height:
-                if self[x, y].entropy != 0:
-                    return True
-        return False
+
+entry = [
+    ['L', 'L', 'L', 'L'],
+    ['L', 'L', 'L', 'L'],
+    ['L', 'L', 'L', 'L'],
+    ['L', 'C', 'C', 'L'],
+    ['C', 'S', 'S', 'C'],
+    ['S', 'S', 'S', 'S'],
+    ['S', 'S', 'S', 'S'],
+]
+s = ScanPattern(entry)
+
+# print(s.width, s.height, s.weights)
+# print(s.patterns)
+
+# state_space = {state: s.weights[state] for state in s.patterns.keys()}
+i = 0
+while i < 10:
+    try:
+        w = Wave((30, 30), s).observe()
+        break
+    except CollapseError:
+        if i == 9:
+            raise ValueError
+        i += 1
+
+for line in w:
+    for lattice in line:
+        lattice = s.patterns[lattice]
