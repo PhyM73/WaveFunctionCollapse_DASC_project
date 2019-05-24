@@ -225,28 +225,24 @@ class ScanTile:
 # tiles, weights, rules = ScanTile(r'image_path').get_rules()
 
 
-class Lattice():
-    '''格点单元'''
+class Grid():
+    ''''''
 
     def __init__(self, state_space):
-        # 格点至少具备两个属性：状态空间，熵
         self.space = state_space  # state_space={state:weight}
-        self.entropy = Lattice.shannon(state_space)
+
+        def shannon(state_space):
+            '''Return the shannon entropy of the state_space'''
+            if len(state_space) == 1:
+                return 0
+
+            ws = sum(state_space.values())
+            return math.log(ws) - sum(map(lambda x: x * math.log(x), state_space.values())) / ws
+
+        self.entropy = shannon(state_space)
 
     def __len__(self):
-        if isinstance(self.space, int):
-            return 1
-        else:
-            return len(self.space)
-
-    @staticmethod
-    def shannon(state_space):
-        '''计算态空间的香农熵'''
-        if len(state_space) == 1:
-            return 0
-
-        ws = sum(state_space.values())
-        return math.log(ws) - sum(map(lambda x: x * math.log(x), state_space.values())) / ws
+        return len(self.space)
 
 
 class CollapseError(StopIteration):
@@ -257,28 +253,28 @@ class Wave():
     '''体系波函数
     
     主要属性：
-        wave: 存储格点(lattice)的矩阵
+        wave: 存储格点(grid)的矩阵
         rules: 承接输入的rules
     '''
 
     def __init__(self, size, charts):
         # 波函数为包含所有格点的矩阵
         self.width, self.height = size[0], size[1]
-        state_space = {state: charts.weights[state] for state in charts.patterns.keys()}
-        self.wave = [[Lattice(state_space)] * size[0]] * size[1]
-        self.rules = charts.rules
-
         self.wait_to_collapse = []
         for i in range(size[0]):
             for j in range(size[1]):
                 self.wait_to_collapse.append((i, j))
+
+        state_space = {state: charts.weights[state] for state in charts.patterns.keys()}
+        self.wave = [[Grid(state_space) for i in range(size[0])] for j in range(size[1])]
+        self.rules = charts.rules
 
     def __getitem__(self, index):
         return self.wave[index[0]][index[1]]
 
     def min_entropy_pos(self):
         '''寻找熵最小的格点的位置'''
-        x, y = self.wait_to_collapse[0][0], self.wait_to_collapse[0][1]
+        x, y, ind = self.wait_to_collapse[0][0], self.wait_to_collapse[0][1], 0
         min_entropy = self[x, y].entropy
         for i in range(len(self.wait_to_collapse)):
             lattice = self.wait_to_collapse[i]
@@ -286,59 +282,64 @@ class Wave():
                 continue
             noise = random.random() / 1000
             if self[lattice[0], lattice[1]].entropy - noise < min_entropy:
-                x, y = lattice[0], lattice[1]
+                x, y, ind = lattice[0], lattice[1], i
                 min_entropy = self[x, y].entropy - noise
 
-        return x, y, i
+        return x, y, ind
 
-    def collapse(self):
+    def collapse(self, position):
         '''选择目前熵最小的格点，并随机塌缩'''
-        x, y, index = self.min_entropy_pos()
-        if len(self[x, y]) == 1:
-            self[x, y].entropy == 0
-            self[x, y].space = list(self[x, y].space.keys())[0]
-        elif len(self[x, y]) > 1:
-            state = random.choices(list(self[x, y].space.keys()), weights=self[x, y].space.values())
-            self[x, y].space = state
-            del self.wait_to_collapse[index]
-            self.propagate((x, y))
-        else:
+        x, y, index = position[0], position[1], position[2]
+        if len(self[x, y]) < 1:
             raise CollapseError
 
+        states, w = list(self[x, y].space.keys()), list(self[x, y].space.values())
+        self.wave[x][y].space = random.choices(states, weights=w)
+        self.wave[x][y].entropy == 0
+        del self.wait_to_collapse[index]
+        self.propagate((x, y))
+
     def neighbor(self, position):
-        n = [None for i in range(4)]
         if position[0] > 0:
-            n[0] = (position[0] - 1, position[1])
-        if position[0] < self.width:
-            n[1] = (position[0] + 1, position[1])
+            yield (position[0] - 1, position[1]), 0
+        if position[0] < self.width - 1:
+            yield (position[0] + 1, position[1]), 1
+        if position[1] < self.height - 1:
+            yield (position[0], position[1] + 1), 2
         if position[1] > 0:
-            n[2] = (position[0], position[1] - 1)
-        if position[1] < self.height:
-            n[3] = (position[0], position[1] + 1)
-        return n
+            yield (position[0], position[1] - 1), 3
 
     def propagate(self, position):
         '''从给定位置处向周围传播塌缩'''
-        nb = self.neighbor(position)
-        for i in range(4):
-            print(self[position].space[0])
-            s = self.rules[self[position].space[0]][i]
-            if nb[i] != None:
-                if len(self[nb[i]]) == 1:
-                    if self[nb[i]].space[0] not in s:
-                        raise CollapseError
-                else:
-                    s = s & set(self[nb[i]].space.keys())
-                    self[nb[i]].space = {state: self[nb[i]].space[state] for state in s}
-                    if len(nb) == 1:
-                        nb.space = list(nb.keys())
-                        nb.entropy = 0
+        for nb, direction in self.neighbor(position):
+            try:
+                ind = self.wait_to_collapse.index(nb)
+                available = self.rules[self[position].space[0]][direction] & set(self[nb].space.keys())
+                if len(available) == 0:
+                    raise CollapseError
+
+                self.wave[nb[0]][nb[1]] = Grid({state: self[nb].space[state] for state in available})
+                if self[nb].entropy == 0:
+                    self.collapse((nb[0], nb[1], ind))
+
+            except ValueError:
+                if self[nb].space[0] not in self.rules[self[position].space[0]][direction]:
+                    raise CollapseError
 
     def observe(self):
         '''测量整个波函数'''
         while self.wait_to_collapse:
-            self.collapse()
+            self.collapse(self.min_entropy_pos())
         return self.wave
+
+    def waveprint(self):
+        for x in range(self.width):
+            print('')
+            for y in range(self.height):
+                if isinstance(self.wave[x][y].space, dict):
+                    print(['\\'], end='')
+                else:
+                    print(self.wave[x][y].space, end='')
 
 
 entry = [
@@ -350,22 +351,30 @@ entry = [
     ['S', 'S', 'S', 'S'],
     ['S', 'S', 'S', 'S'],
 ]
-s = ScanPattern(entry)
+s = ScanPattern(entry, N=2)
 
 # print(s.width, s.height, s.weights)
 # print(s.patterns)
 
-# state_space = {state: s.weights[state] for state in s.patterns.keys()}
-i = 0
-while i < 10:
-    try:
-        w = Wave((30, 30), s).observe()
-        break
-    except CollapseError:
-        if i == 9:
-            raise ValueError
-        i += 1
 
-for line in w:
-    for lattice in line:
-        lattice = s.patterns[lattice]
+def wfc(entry, max_iter=1000):
+    i = 0
+    while i < max_iter:
+        try:
+            w = Wave((8, 8), entry).observe()
+            # print(w)
+            break
+        except CollapseError:
+            if i == max_iter - 1:
+                raise ValueError
+            i += 1
+            # print('fail')
+    return w
+
+
+w = wfc(s)
+
+for i in range(len(w)):
+    for j in range(len(w[0])):
+        w[i][j] = w[i][j].space[0]
+print(w)
