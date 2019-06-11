@@ -5,6 +5,7 @@ try:
 except:
     from PIL import Image
 
+
 def transimage(image_path): #将图片转化为矩阵
     image = Image.open(image_path)
     wid, hei = image.size
@@ -14,6 +15,7 @@ def transimage(image_path): #将图片转化为矩阵
         for y in range(hei):
             matrix[x][y] = load[x, y]
     return matrix
+
 
 class ScanPattern:
     """ 
@@ -167,6 +169,15 @@ class ScanPattern:
 
         for index in range(len(self.patterns)):
             for ind in range(index + 1):
+
+#             if direction == 0:
+#                 return [line[:-1] for line in pattern1] == [line[1:] for line in pattern2]
+#             if direction == 2:
+#                 return pattern1[:-1] == pattern2[1:]
+
+#         for index in range(len(self.patterns)):
+#             for ind in range(index):
+
                 for direction in (0, 2):
                     if overlap(self.patterns[index], self.patterns[ind], direction):
                         self.rules[index][direction].add(ind)
@@ -272,12 +283,8 @@ class Wave():
     def __init__(self, size, charts):
         # 波函数为包含所有格点的矩阵
         self.width, self.height = size[0], size[1]
-        self.wait_to_collapse = set() 
-        for i in range(size[0]):
-            for j in range(size[1]):
-                self.wait_to_collapse.add((i, j))
-
-        self.Stack = [] #储存过程的栈，其中存储已经改变过的点坐标以及状态空间为元素为坐标到状态空间的字典
+        self.wait_to_collapse = set((i, j) for i in range(size[0]) for j in range(size[1]))
+        self.Stack = []  #储存过程的栈，其中存储已经改变过的点坐标以及状态空间为元素为坐标到状态空间的字典
         self.weight = charts.weights
 
         state_space = {state: charts.weights[state] for state in charts.patterns.keys()}
@@ -289,6 +296,7 @@ class Wave():
 
     def min_entropy_pos(self):
         '''寻找熵最小的格点的位置'''
+
         min_entropy = float("inf")
         for lattice in self.wait_to_collapse:
             #if self[lattice[0], lattice[1]].entropy == 0:
@@ -319,6 +327,42 @@ class Wave():
             self.wave[x][y].entropy = 0
             self.wait_to_collapse.remove(position)
             self.propagate((x, y))
+
+#         x, y, ind = self.wait_to_collapse[0][0], self.wait_to_collapse[0][1], 0
+#         min_entropy = self[x, y].entropy
+#         for i in range(len(self.wait_to_collapse)):
+#             lattice = self.wait_to_collapse[i]
+#             if self[lattice[0], lattice[1]].entropy == 0:
+#                 continue
+#             noise = random.random() / 1000
+#             if self[lattice[0], lattice[1]].entropy - noise < min_entropy:
+#                 x, y, ind = lattice[0], lattice[1], i
+#                 min_entropy = self[x, y].entropy - noise
+
+#         return x, y, ind
+
+#     def collapse(self, position):
+#         '''选择目前熵最小的格点，并随机塌缩'''
+#         x, y, index = position[0], position[1], position[2]
+#         if len(self[x, y]) < 1:
+#             raise CollapseError
+
+#         states, w = list(self[x, y].space.keys()), list(self[x, y].space.values())
+#         self.wave[x][y].space = random.choices(states, weights=w)
+#         self.wave[x][y].entropy == 0
+#         del self.wait_to_collapse[index]
+#         self.propagate((x, y))
+
+#     def neighbor(self, position):
+#         if position[0] > 0:
+#             yield (position[0] - 1, position[1]), 0
+#         if position[0] < self.width - 1:
+#             yield (position[0] + 1, position[1]), 1
+#         if position[1] < self.height - 1:
+#             yield (position[0], position[1] + 1), 2
+#         if position[1] > 0:
+#             yield (position[0], position[1] - 1), 3
+
 
     def neighbor(self, position):
         if position[0] > 0:
@@ -378,11 +422,13 @@ class Wave():
         else:
             raise CollapseError("No Sulotion")
 
+
     def observe(self):
         '''测量整个波函数'''
         while self.wait_to_collapse:
             self.collapse(self.min_entropy_pos())
         return self.wave
+
 
     # def waveprint(self):
     #     for x in range(self.width):
@@ -426,6 +472,7 @@ s = ScanPattern(entry, N=2)
 # print(s.rules)
 
 """ def wfc(entry, max_iter=1000):
+
     i = 0
     while i < max_iter:
         try:
@@ -458,3 +505,21 @@ for i in range(len(w)):
         result[i][j] = w[i][j].space
 for line in result:
     print(line)
+
+#     return w
+
+
+# w = wfc(s)
+
+# for i in range(len(w)):
+#     for j in range(len(w[0])):
+#         w[i][j] = w[i][j].space[0]
+# print(w)
+
+# 整合代码
+# 加入回溯
+
+# 第二种输入方式
+
+# 对称问题
+
