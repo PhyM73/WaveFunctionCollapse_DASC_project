@@ -5,7 +5,8 @@ try:
 except:
     from PIL import Image
 
-def transimage(image_path): #将图片转化为矩阵
+
+def transimage(image_path):  #将图片转化为矩阵
     image = Image.open(image_path)
     wid, hei = image.size
     load = image.load()
@@ -14,6 +15,7 @@ def transimage(image_path): #将图片转化为矩阵
         for y in range(hei):
             matrix[x][y] = load[x, y]
     return matrix
+
 
 class ScanPattern:
     """ 
@@ -160,8 +162,8 @@ class ScanPattern:
         '''遍历patterns匹配所有规则'''
 
         def overlap(pattern1, pattern2, direction):
-            if direction == 0:           
-                 return pattern1[:-1] == pattern2[1:]              
+            if direction == 0:
+                return pattern1[:-1] == pattern2[1:]
             if direction == 2:
                 return [line[:-1] for line in pattern1] == [line[1:] for line in pattern2]
 
@@ -238,7 +240,7 @@ class Grid():
     ''''''
 
     def __init__(self, state_space):
-        self.space = state_space  # state_space={state:weight}
+        self.space = state_space  # state_space = {state:weight}
 
         def shannon(state_space):
             '''Return the shannon entropy of the state_space'''
@@ -272,16 +274,17 @@ class Wave():
     def __init__(self, size, charts):
         # 波函数为包含所有格点的矩阵
         self.width, self.height = size[0], size[1]
-        self.wait_to_collapse = set() 
-        for i in range(size[0]):
-            for j in range(size[1]):
-                self.wait_to_collapse.add((i, j))
+        self.wait_to_collapse = set((i, j) for i in range(size[0]) for j in range(size[1]))
+        # for i in range(size[0]):
+        # self.wait_to_collapse |= set((i, j) for j in range(size[1]))
+        # for j in range(size[1]):
+        # self.wait_to_collapse.add((i, j))
 
-        self.Stack = [] #储存过程的栈，其中存储已经改变过的点坐标以及状态空间为元素为坐标到状态空间的字典
+        self.Stack = []  #储存过程的栈，其中存储已经改变过的点坐标以及状态空间为元素为坐标到状态空间的字典
         self.weight = charts.weights
 
         state_space = {state: charts.weights[state] for state in charts.patterns.keys()}
-        self.wave = [[Grid(state_space.copy()) for i in range(size[1])] for j in range(size[0])]
+        self.wave = [[Grid(state_space.copy()) for i in range(size[0])] for j in range(size[1])]
         self.rules = charts.rules
 
     def __getitem__(self, index):
@@ -292,9 +295,9 @@ class Wave():
         min_entropy = float("inf")
         for lattice in self.wait_to_collapse:
             #if self[lattice[0], lattice[1]].entropy == 0:
-                #continue
+            #continue
             #noise = random.random() / 1000
-            if self[lattice].entropy  < min_entropy:
+            if self[lattice].entropy < min_entropy:
                 position = lattice[:]
                 min_entropy = self[position].entropy
         return position
@@ -304,13 +307,13 @@ class Wave():
         x, y = position[0], position[1]
         if len(self[x, y]) < 1:
             #raise CollapseError
-            self.goback() 
-        elif len(self[x, y]) == 1:#没有另外的选择，不入栈
+            self.goback()
+        elif len(self[x, y]) == 1:  #没有另外的选择，不入栈
             self.wave[x][y].space = self[x, y].space.popitem()[0]
             self.wave[x][y].entropy = 0
             self.wait_to_collapse.remove(position)
-            self.propagate(position)            
-        else:    #有另外的选择，在状态空间删去已选的pattern后入栈
+            self.propagate(position)
+        else:  #有另外的选择，在状态空间删去已选的pattern后入栈
             states, w = list(self[x, y].space.keys()), list(self[x, y].space.values())
             elem = random.choices(states, weights=w)[0]
             del self.wave[x][y].space[elem]
@@ -329,11 +332,11 @@ class Wave():
             yield (position[0], position[1] - 1), 2
         if position[1] < self.height - 1:
             yield (position[0], position[1] + 1), 3
-        
+
     def propagate(self, position):
         '''从给定位置处向周围传播塌缩'''
-        for nb, direction in self.neighbor(position):          
-            if nb in self.wait_to_collapse:    
+        for nb, direction in self.neighbor(position):
+            if nb in self.wait_to_collapse:
                 available = self.rules[self[position].space][direction] & set(self[nb].space.keys())
                 if len(available) == 0:
                     self.goback()
@@ -341,7 +344,7 @@ class Wave():
                 # if len(available) == 1:
                 #     self.near.append(nb)
                 if self.Stack and (nb not in self.Stack[-1].keys()):
-                    self.Stack[-1][nb] = self[nb].space.copy() #加如到引起此变化的塌缩点所在的字典中，并且只记录最初的状态空间
+                    self.Stack[-1][nb] = self[nb].space.copy()  #加如到引起此变化的塌缩点所在的字典中，并且只记录最初的状态空间
                 self.wave[nb[0]][nb[1]] = Grid({state: self.weight[state] for state in available})
             else:
                 if self[nb].space in self.rules[self[position].space][direction]:
@@ -369,10 +372,10 @@ class Wave():
                 #         print(self.Stack.pop())
                 #     raise CollapseError('wrong')
 
-    def goback(self): #回溯
+    def goback(self):  #回溯
         if self.Stack:
             step = self.Stack.pop()
-            for ((x, y), space) in step.items(): #将最后一次塌缩影响过的所有点还原
+            for ((x, y), space) in step.items():  #将最后一次塌缩影响过的所有点还原
                 self.wave[x][y] = Grid(space)
                 self.wait_to_collapse.add((x, y))
         else:
@@ -395,28 +398,28 @@ class Wave():
 
 
 entry = [
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L','L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L','L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L','L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L','L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L','L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L','L'],
-    ['L', 'L', 'C', 'C' ,'C', 'C', 'C' ,'C', 'C', 'L','L'],
-    ['L', 'C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C','L'],
-    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S','C'],
-    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S','C'],
-    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S','C'],
-    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S','C'],
-    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S','C'],
-    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S','C'],
-    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S','C'],
-    ['L', 'C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C','L'],
-    ['L', 'L', 'C', 'C' ,'C', 'C', 'C' ,'C', 'C', 'L','L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L','L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L','L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L','L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L','L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L','L'],
+    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+    ['L', 'L', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'L', 'L'],
+    ['L', 'C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
+    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C'],
+    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C'],
+    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C'],
+    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C'],
+    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C'],
+    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C'],
+    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C'],
+    ['L', 'C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
+    ['L', 'L', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'L', 'L'],
+    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
 ]
 #entry = transimage(image_path)#路径前加r转义，r'*****'
 s = ScanPattern(entry, N=2)
@@ -424,7 +427,6 @@ s = ScanPattern(entry, N=2)
 # print(s.width, s.height, s.weights)
 # print(s.patterns)
 # print(s.rules)
-
 """ def wfc(entry, max_iter=1000):
     i = 0
     while i < max_iter:
@@ -439,7 +441,7 @@ s = ScanPattern(entry, N=2)
             # print('fail')
     return w """
 
-w = Wave((30,30), s).observe()
+w = Wave((30, 30), s).observe()
 
 #处理图片时调用
 # image1 = Image.new('RGB', (30,30), (0,0,0))
@@ -449,7 +451,6 @@ w = Wave((30,30), s).observe()
 #         result[i,j] = s.patterns[w[i][j].space][0][0]
 # image1.save('emmmm.png')
 # image1.show()
-
 
 #处理矩阵时调用
 result = [[None] * len(w[0]) for _ in range(len(w))]
