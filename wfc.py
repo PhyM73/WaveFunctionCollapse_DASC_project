@@ -351,7 +351,7 @@ entry = [
     ['S', 'S', 'S', 'S'],
     ['S', 'S', 'S', 'S'],
 ]
-s = ScanPattern(entry, N=2)
+s = ScanPattern(entry, N=2, AllRules=True)
 
 # print(s.width, s.height, s.weights)
 # print(s.patterns)
@@ -378,3 +378,10 @@ for i in range(len(w)):
     for j in range(len(w[0])):
         w[i][j] = w[i][j].space[0]
 print(w)
+
+# 整合代码
+# 加入回溯
+
+# 第二种输入方式
+
+# 对称问题
