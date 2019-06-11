@@ -284,7 +284,7 @@ class Wave():
         self.weight = charts.weights
 
         state_space = {state: charts.weights[state] for state in charts.patterns.keys()}
-        self.wave = [[Grid(state_space.copy()) for i in range(size[0])] for j in range(size[1])]
+        self.wave = [[Grid(state_space.copy()) for i in range(size[1])] for j in range(size[0])]
         self.rules = charts.rules
 
     def __getitem__(self, index):
