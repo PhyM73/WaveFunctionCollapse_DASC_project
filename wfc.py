@@ -464,39 +464,20 @@ entry = [
     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L','L'],
     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L','L'],
 ]
-#entry = transimage(image_path)#路径前加r转义，r'*****'
-s = ScanPattern(entry, N=2)
+# ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
+entry = transimage(r"samples\Flowers.png")  #路径前加r转义，r'*****'
 
-# print(s.width, s.height, s.weights)
-# print(s.patterns)
-# print(s.rules)
+w = Wave((40, 40), entry, N=3).observe()
 
-""" def wfc(entry, max_iter=1000):
-
-    i = 0
-    while i < max_iter:
-        try:
-            w = Wave((8, 8), entry).observe()
-            # print(w)
-            break
-        except CollapseError:
-            if i == max_iter - 1:
-                raise ValueError
-            i += 1
-            # print('fail')
-    return w """
-
-w = Wave((30,30), s).observe()
-
-#处理图片时调用
-# image1 = Image.new('RGB', (30,30), (0,0,0))
-# result = image1.load()
-# for i in range(len(w)):
-#     for j in range(len(w[0])):
-#         result[i,j] = s.patterns[w[i][j].space][0][0]
-# image1.save('emmmm.png')
-# image1.show()
-
+# 处理图片时调用
+image1 = Image.new('RGB', (40, 40), (0, 0, 0))
+result = image1.load()
+for i in range(w.size[0]):
+    for j in range(w.size[1]):
+        result[i, j] = w.patterns[list(w.wave[i][j].space.keys())[0]][0][0]
+image1.save('emmmm.png')
+image1.show()
+image1.close()
 
 #处理矩阵时调用
 result = [[None] * len(w[0]) for _ in range(len(w))]
