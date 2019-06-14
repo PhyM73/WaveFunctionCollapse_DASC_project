@@ -6,7 +6,6 @@ except:
     from PIL import Image
 import numpy as np
 
-
 #import matplotlib.pyplot as plt
 
 
@@ -69,7 +68,7 @@ class WaveFunction():
             self.make_all_rules()
 
         #self.image_size = size
-        self.size = (size[0]-N+1, size[1]-N+1)
+        self.size = (size[0] - N + 1, size[1] - N + 1)
         self.wait_to_collapse = set((x, y) for x in range(self.size[0]) for y in range(self.size[1]))
         self.Stack = []  # 储存过程的栈，其中存储已经改变过的点坐标以及状态空间为元素为坐标到状态空间的字典
 
@@ -81,7 +80,6 @@ class WaveFunction():
         self.N = N
         #self.changed = set()
         #self.image = self.buildimage()
-
 
     def BuildPatterns(self, entry, N=3):
         '''构建pattern及初步的邻近规则'''
@@ -132,7 +130,7 @@ class WaveFunction():
 
     # def buildimage(self):
     #     weights = np.array(self.weights)
-    #     mean = tuple(map(lambda x: int(np.average(np.array(x), weights = weights)), 
+    #     mean = tuple(map(lambda x: int(np.average(np.array(x), weights = weights)),
     #         zip(*(pattern[0][0] for pattern in self.patterns.values()))))
     #     return Image.new('RGB', self.image_size, mean)
 
@@ -148,7 +146,7 @@ class WaveFunction():
     #             x, y = position[0] + i, position[1] + j
     #             keys, values = list(self[position].space.keys()), np.array(list(self[position].space.values()))
     #             #print(keys, values)
-    #             mean = tuple(map(lambda x: int(np.average(np.array(x), weights=values)), 
+    #             mean = tuple(map(lambda x: int(np.average(np.array(x), weights=values)),
     #                 zip(*(self.patterns[index][i][j] for index in keys))))
     #             image[x, y] = mean
 
@@ -194,9 +192,8 @@ class WaveFunction():
                 self[x, y] = Grid({elem: 1})
             self.wait_to_collapse.remove(position)
 
-
             #self.update(position)
-            #self.propagate(position)
+            self.propagate(position)
             return self.propagate(position)
 
     def propagate(self, position):
@@ -217,7 +214,7 @@ class WaveFunction():
                         available = available & set(self[nb].space.keys())
                         if len(available) == 0:
                             return self.backtrack()
-                            
+
                         elif self.Stack and (nb not in self.Stack[-1].keys()):
                             self.Stack[-1][nb] = self[nb].space.copy()
                             # 加入到引起此变化的塌缩点所在的字典中，并且只记录最初的状态空间
@@ -257,36 +254,39 @@ class WaveFunction():
 def main(size, entry, N=3, AllRules=False):
 
     def update(img, position, w, N):
-        limit_i, limit_j = 1,1
-        if position[0] == w.size[0]-1:
+        limit_i, limit_j = 1, 1
+        if position[0] == w.size[0] - 1:
             limit_i = N
-        if position[1] == w.size[1]-1:
+        if position[1] == w.size[1] - 1:
             limit_j = N
         for i in range(limit_i):
             for j in range(limit_j):
                 x, y = position[0] + i, position[1] + j
                 keys, values = list(w[position].space.keys()), np.array(list(w[position].space.values()))
-                mean = tuple(map(lambda x: int(np.average(np.array(x), weights=values)), 
-                    zip(*(w.patterns[index][i][j] for index in keys))))
+                mean = tuple(
+                    map(lambda x: int(np.average(np.array(x), weights=values)),
+                        zip(*(w.patterns[index][i][j] for index in keys))))
                 img[x, y] = mean
         return img
 
     count = 0
-    w = WaveFunction(size, entry, N=3, AllRules=AllRules)
+    w = WaveFunction(size, entry, N=N, AllRules=AllRules)
     weights = np.array(w.weights)
-    mean = tuple(map(lambda x: int(np.average(np.array(x), weights = weights)), 
-        zip(*(pattern[0][0] for pattern in w.patterns.values()))))
+    mean = tuple(
+        map(lambda x: int(np.average(np.array(x), weights=weights)),
+            zip(*(pattern[0][0] for pattern in w.patterns.values()))))
     image = Image.new('RGB', size, mean)
     img = image.load()
-    image.save(str(count)+'.png')
+    image.save(str(count) + '.png')
 
     while w.wait_to_collapse:
         changed = w.collapse(w.min_entropy_pos())
-        print(changed)
+        # w.collapse(w.min_entropy_pos())
+        # print(changed)
         for nb in changed:
             img = update(img, nb, w, N)
         count += 1
-        image.save(str(count)+'.png')
+        # image.save(str(count)+'.png')
 
 
 # entry = [
@@ -314,7 +314,7 @@ def main(size, entry, N=3, AllRules=False):
 # ]
 # ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
 entry = image2matrix(r"samples\Colored City.png")  #路径前加r转义，r'*****'
-main((50,50), entry, N = 2)
+main((30, 30), entry, N=2)
 # # 处理图片时调用
 # image1 = Image.new('RGB', (70, 70), (0, 0, 0))
 # result = image1.load()
