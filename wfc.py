@@ -59,10 +59,10 @@ class WaveFunction():
      
     """
 
-    def __init__(self, size, entry, N=3, AllRules=False,Periodic=False):
+    def __init__(self, size, entry, N=3, AllRules=False, Periodic=False):
         # 初始化patterns
         self.patterns, self.weights, self.rules = {}, [], []
-        self.BuildPatterns(entry, N=N,Periodic=Periodic)
+        self.BuildPatterns(entry, N=N, Periodic=Periodic)
         self.patterns = {index: pattern for pattern, index in self.patterns.items()}
 
         if N > 1 and AllRules:
@@ -81,9 +81,14 @@ class WaveFunction():
         self.N = N
         self.image = self.buildimage()
 
-    def BuildPatterns(self, entry, N=3,Periodic=False):
+    def BuildPatterns(self, entry, N=3, Periodic=False):
         """Parses the `entry` matrix. Extracts patterns, weights and adjacent rules. """
-        width, height = len(entry) - N + 1, len(entry[0]) - N + 1
+        if Periodic:
+            width, height = len(entry) - 1, len(entry[0]) - 1
+            entry = [entry[x][:] + entry[x][1:N - 1] for x in range(len(entry))]
+            entry = entry[:] + entry[1:N - 1]
+        else:
+            width, height = len(entry) - N + 1, len(entry[0]) - N + 1
         matrix = [[None] * height for _ in range(width)]
         index = 0
         for x in range(width):
@@ -101,9 +106,9 @@ class WaveFunction():
                     self.weights.append(1)
                     self.rules.append([set() for _ in range(4)])
                     index += 1
-                self.make_rule((x, y), matrix,Periodic)
+                self.make_rule((x, y), matrix, Periodic)
 
-    def make_rule(self, position, matrix,Periodic):
+    def make_rule(self, position, matrix, Periodic):
         """为position处的pattern及其左侧、上侧的pattern创建邻近规则"""
         # The order of directions: (-1,0), (1,0), (0,-1), (0,1)
         (x, y) = position
@@ -113,12 +118,6 @@ class WaveFunction():
         if y > 0:
             self.rules[matrix[x][y]][2].add(matrix[x][y - 1])
             self.rules[matrix[x][y - 1]][3].add(matrix[x][y])
-        if Periodic and x == len(matrix)-1 :
-            self.rules[matrix[x][y]][1].add(matrix[0][y])
-            self.rules[matrix[0][y]][0].add(matrix[x][y])
-        if Periodic and y == len(matrix[0]) - 1:
-            self.rules[matrix[x][y]][3].add(matrix[x][0])
-            self.rules[matrix[x][0]][2].add(matrix[x][y])
 
     def make_all_rules(self):
         """Traverses patterns to match all the possible rules.
@@ -235,7 +234,7 @@ class WaveFunction():
     def backtrack(self):
         """Backtracks to the previous step. 
         If there is no way to backtrack then this method raises CollapseError. """
-        # print('0')
+        print('0')
         if self.Stack:
             step = self.Stack.pop()
             # Restore all the Girds affected by the last collapse
@@ -292,7 +291,8 @@ entry = image2matrix(r"samples\Colored City.png")  #路径前加r转义，r'****
 #image1 = Image.new('RGB', (40, 40), (0, 0, 0))
 #result = image1.load()
 
-for w in WaveFunction((100, 100), entry, N=2).observe():
+for w in WaveFunction((60, 60), entry, N=1, Periodic=False).observe():
+    w.save('e.bmp')
     w.show()
 
 #处理矩阵时调用
