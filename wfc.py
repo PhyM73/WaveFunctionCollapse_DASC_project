@@ -4,8 +4,10 @@ try:
     import Image
 except:
     from PIL import Image
+import numpy as np
 
-# import matplotlib.pyplot as plt
+
+#import matplotlib.pyplot as plt
 
 
 def image2matrix(image_path):
@@ -66,14 +68,19 @@ class WaveFunction():
         if N > 1 and AllRules:
             self.make_all_rules()
 
-        self.size = size
-        self.wait_to_collapse = set((x, y) for x in range(size[0]) for y in range(size[1]))
+        self.image_size = size
+        self.size = (size[0]-N+1, size[1]-N+1)
+        self.wait_to_collapse = set((x, y) for x in range(self.size[0]) for y in range(self.size[1]))
         self.Stack = []  # 储存过程的栈，其中存储已经改变过的点坐标以及状态空间为元素为坐标到状态空间的字典
 
         state_space = {state: self.weights[state] for state in self.patterns.keys()}
-        self.wave = [[Grid(state_space.copy()) for i in range(size[1])] for j in range(size[0])]
+        self.wave = [[Grid(state_space.copy()) for i in range(self.size[1])] for j in range(self.size[0])]
         # Initializes the 2-D WaveFunction matrix, each Grid of the matrix
         # starts with all states as possible. No state is forbidden yet.
+
+        self.N = N
+        self.image = self.buildimage()
+
 
     def BuildPatterns(self, entry, N=3):
         '''构建pattern及初步的邻近规则'''
@@ -122,6 +129,28 @@ class WaveFunction():
                         self.rules[index][direction].add(ind)
                         self.rules[ind][direction + 1].add(index)
 
+    def buildimage(self):
+        weights = np.array(self.weights)
+        mean = tuple(map(lambda x: int(np.average(np.array(x), weights = weights)), 
+            zip(*(pattern[0][0] for pattern in self.patterns.values()))))
+        return Image.new('RGB', self.image_size, mean)
+
+    def update(self, position):
+        image = self.image.load()
+        limit_i, limit_j = 1,1
+        if position[0] == self.size[0]-1:
+            limit_i = self.N
+        if position[1] == self.size[1]-1:
+            limit_j = self.N
+        for i in range(limit_i):
+            for j in range(limit_j):
+                x, y = position[0] + i, position[1] + j
+                keys, values = list(self[position].space.keys()), np.array(list(self[position].space.values()))
+                #print(keys, values)
+                mean = tuple(map(lambda x: int(np.average(np.array(x), weights=values)), 
+                    zip(*(self.patterns[index][i][j] for index in keys))))
+                image[x, y] = mean
+
     def __getitem__(self, index):
         return self.wave[index[0]][index[1]]
 
@@ -162,6 +191,7 @@ class WaveFunction():
                 del self.wave[x][y].space[elem]
                 self.Stack.append({position: self[position].space.copy()})
                 self[x, y] = Grid({elem: 1})
+            self.update(position)
             self.wait_to_collapse.remove(position)
             self.propagate(position)
 
@@ -186,9 +216,10 @@ class WaveFunction():
                         elif self.Stack and (nb not in self.Stack[-1].keys()):
                             self.Stack[-1][nb] = self[nb].space.copy()
                             # 加入到引起此变化的塌缩点所在的字典中，并且只记录最初的状态空间
-                        if len(available) == 1:
-                            self.wait_to_collapse.remove(nb)
+                        # if len(available) == 1:
+                        #     self.wait_to_collapse.remove(nb)
                         self[nb] = Grid({state: self.weights[state] for state in available})
+                        self.update(nb)
                         PropagStack.append(nb)
 
     def backtrack(self):
@@ -207,37 +238,36 @@ class WaveFunction():
     def observe(self):
         '''Observe the whole WaveFunction'''
         while self.wait_to_collapse:
-            yield self
+            yield self.image
             self.collapse(self.min_entropy_pos())
-        yield self
-        # return self
+        yield self.image
 
 
-entry = [
-    # ['S', 'S', 'S', 'C', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-    ['S', 'S', 'C', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-    ['C', 'C', 'C', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'C', 'L', 'L'],
-    ['L', 'L', 'C', 'C', 'L', 'L', 'L', 'C', 'S', 'C', 'L'],
-    ['L', 'C', 'S', 'S', 'C', 'L', 'L', 'C', 'S', 'C', 'L'],
-    ['C', 'S', 'S', 'S', 'S', 'C', 'C', 'S', 'S', 'S', 'C'],
-    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
-    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L', 'L'],
-    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
-    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C'],
-    ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C'],
-    ['L', 'C', 'S', 'S', 'S', 'C', 'S', 'S', 'S', 'C', 'L'],
-    ['L', 'L', 'C', 'C', 'C', 'L', 'C', 'S', 'C', 'L', 'L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'C', 'L', 'L', 'L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-    ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-]
+# entry = [
+#     # ['S', 'S', 'S', 'C', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+#     ['S', 'S', 'C', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+#     ['C', 'C', 'C', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'C', 'L', 'L'],
+#     ['L', 'L', 'C', 'C', 'L', 'L', 'L', 'C', 'S', 'C', 'L'],
+#     ['L', 'C', 'S', 'S', 'C', 'L', 'L', 'C', 'S', 'C', 'L'],
+#     ['C', 'S', 'S', 'S', 'S', 'C', 'C', 'S', 'S', 'S', 'C'],
+#     ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
+#     ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L', 'L'],
+#     ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
+#     ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C'],
+#     ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C'],
+#     ['L', 'C', 'S', 'S', 'S', 'C', 'S', 'S', 'S', 'C', 'L'],
+#     ['L', 'L', 'C', 'C', 'C', 'L', 'C', 'S', 'C', 'L', 'L'],
+#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'C', 'L', 'L', 'L'],
+#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
+# ]
 # ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
-entry = image2matrix(r"samples\Village.png")  #路径前加r转义，r'*****'
+entry = image2matrix(r"samples\Colored City.png")  #路径前加r转义，r'*****'
 
 # # 处理图片时调用
 # image1 = Image.new('RGB', (70, 70), (0, 0, 0))
@@ -249,15 +279,11 @@ entry = image2matrix(r"samples\Village.png")  #路径前加r转义，r'*****'
 # image1.show()
 # 处理图片时调用
 
-image1 = Image.new('RGB', (40, 40), (0, 0, 0))
-result = image1.load()
+#image1 = Image.new('RGB', (40, 40), (0, 0, 0))
+#result = image1.load()
 
-for w in WaveFunction((40, 40), entry, N=2).observe():
-    for i in range(w.size[0]):
-        for j in range(w.size[1]):
-            result[i, j] = w.patterns[list(w[i, j].space.keys())[0]][0][0]
-    image1.save('emmmm.png')
-    image1.show()
+for w in WaveFunction((30, 30), entry, N=2).observe():
+    w.show()
 
 #处理矩阵时调用
 # result = [[None] * w.size[1] for _ in range(w.size[0])]
