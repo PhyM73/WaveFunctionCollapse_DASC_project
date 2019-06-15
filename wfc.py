@@ -76,7 +76,6 @@ class WaveFunction():
     def BuildPatterns(self, entry, N=3, Periodic=False):
         """Parses the `entry` matrix. Extracts patterns, weights and adjacent rules. """
         if Periodic:
-            print('a')
             width, height = len(entry) - 1, len(entry[0]) - 1
             entry = [entry[x][:] + entry[x][1:N - 1] for x in range(len(entry))]
             entry = entry[:] + entry[1:N - 1]
@@ -169,7 +168,6 @@ class WaveFunction():
         """Collapses the grid at `position`, and then propagates the consequences. """
         (x, y) = position
         if len(self[position]) < 1:
-            # yield from self.backtrack()
             return self.backtrack()
         else:
             if len(self[position]) > 1:
@@ -181,9 +179,6 @@ class WaveFunction():
                 self[x, y] = Grid({elem: 1})
             self.wait_to_collapse.remove(position)
             return self.propagate(position)
-            # yield position
-            # yield from self.propagate(position)
-            # self.propagate(position)
 
     def propagate(self, position):
         """Propagates the consequences of the wavefunction collapse or statespace changing at `position`.
@@ -201,17 +196,13 @@ class WaveFunction():
                     if not set(self[nb].space.keys()).issubset(available):
                         available = available & set(self[nb].space.keys())
                         if len(available) == 0:
-                            # print('no')
                             return self.backtrack()
-                            # break
 
                         elif self.Stack and (nb not in self.Stack[-1].keys()):
-                            # push this changed Grid into the Stack.
+                            # Push this changed Grid into the Stack.
                             self.Stack[-1][nb] = self[nb].space.copy()
                         self[nb] = Grid({state: self.weights[state] for state in available})
                         PropagStack.append(nb)
-                        # yield nb
-                        # self.update(nb)
                         changed.add(nb)
         return changed
 
@@ -220,13 +211,10 @@ class WaveFunction():
         If there is no way to backtrack then this method raises CollapseError. """
         if len(self.Stack):
             step = self.Stack.pop()
-            # Restore all the Girds affected by the last collapse
+            # Restore all the Girds affected by the last collapse.
             for (position, space) in step.items():
                 self[position] = Grid(space)
                 self.wait_to_collapse.add(position)
-                # yield position
-            # yield from [step.keys()]
-            # print('back')
             return set(step.keys())
         else:
             raise CollapseError("No Sulotion")
@@ -252,6 +240,7 @@ def image2matrix(image_path):
 
 def mean_pixel(wave, position, i, j):
     keys, values = list(wave[position].space.keys()), np.array(list(wave[position].space.values()))
+    # comment
     return tuple(
         map(lambda x: int(np.average(np.array(x), weights=values)),
             zip(*(wave.patterns[index][i][j] for index in keys))))
@@ -271,8 +260,8 @@ def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, survei
     w = WaveFunction(size, entry, N=N, AllRules=AllRules, Periodic=Periodic)
     count = 0
     image = Image.new('RGB', size, mean_pixel(w, (0, 0), 0, 0))
-    img = image.load()
     image.save('result\\' + str(count) + '.png')
+    img = image.load()
 
     if surveil: count += 1
 
@@ -282,16 +271,11 @@ def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, survei
         image.save('result\\' + str(count) + '.png')
         count += 1
 
-    # for pos in w.observe(surveil):
-    #     img = update(img, pos, w, N)
-    #     if surveil:
-    #         count += 1
-    #         image.save('result\\' + str(count) + '.png')
-    # image.save('result\\' + str(count) + '.png')
 
+# if __name__ == '__main__':
 
 #####################################################################
-ImageProcessor(r"samples\Colored City.png", (50, 50), N=3, surveil=False, Periodic=True, AllRules=True)
+ImageProcessor(r"samples\3Bricks.png", (50, 50), N=3, surveil=False, Periodic=True, AllRules=False)
 
 # entry = [
 #     # ['S', 'S', 'S', 'C', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
