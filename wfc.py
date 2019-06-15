@@ -192,9 +192,9 @@ class WaveFunction():
                 self[x, y] = Grid({elem: 1})
             self.wait_to_collapse.remove(position)
             yield position
+            yield from self.propagate(position)
             #self.update(position)
             # self.propagate(position)
-            yield from self.propagate(position)
 
     def propagate(self, position):
         '''Propagates the consequences of the wavefunction collapse or statespace changing at `position`.
@@ -219,13 +219,11 @@ class WaveFunction():
                         elif self.Stack and (nb not in self.Stack[-1].keys()):
                             self.Stack[-1][nb] = self[nb].space.copy()
                             # 加入到引起此变化的塌缩点所在的字典中，并且只记录最初的状态空间
-                        # if len(available) == 1:
-                        #     self.wait_to_collapse.remove(nb)
                         self[nb] = Grid({state: self.weights[state] for state in available})
                         PropagStack.append(nb)
+                        yield nb
                         #self.update(nb)
                         # changed.add(nb)
-                        yield nb
         # return changed
 
     def backtrack(self):
