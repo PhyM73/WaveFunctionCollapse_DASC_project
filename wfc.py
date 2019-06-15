@@ -166,7 +166,6 @@ class WaveFunction():
             return self.propagate(position)
             # yield position
             # yield from self.propagate(position)
-            #self.update(position)
             # self.propagate(position)
 
     def propagate(self, position):
@@ -268,106 +267,6 @@ def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, survei
         image.save('result\\' + str(count) + '.png')
         count += 1
 
-
-# def main(size, entry, N=3, AllRules=False, surveil=False):
-
-#     def update(img, position, w, N):
-#         limit_i, limit_j = 1, 1
-#         if position[0] == w.size[0] - 1:
-#             limit_i = N
-#         if position[1] == w.size[1] - 1:
-#             limit_j = N
-#         for i in range(limit_i):
-#             for j in range(limit_j):
-#                 x, y = position[0] + i, position[1] + j
-#                 keys, values = list(w[position].space.keys()), np.array(list(w[position].space.values()))
-#                 mean = tuple(
-#                     map(lambda x: int(np.average(np.array(x), weights=values)),
-#                         zip(*(w.patterns[index][i][j] for index in keys))))
-#                 img[x, y] = mean
-#         return img
-
-#     w = WaveFunction(size, entry, N=N, AllRules=AllRules)
-#     count = 0
-#     weights = np.array(w.weights)
-#     mean = tuple(
-#         map(lambda x: int(np.average(np.array(x), weights=weights)),
-#             zip(*(pattern[0][0] for pattern in w.patterns.values()))))
-#     image = Image.new('RGB', size, mean)
-#     img = image.load()
-#     image.save(str(count) + '.png')
-
-#     if surveil:
-#         while w.wait_to_collapse:
-#             for pos in w.collapse(w.min_entropy_pos()):
-#                 img = update(img, pos, w, N)
-#                 count += 1
-#                 image.save(str(count) + '.png')
-#             # changed = w.collapse(w.min_entropy_pos())
-#             # for nb in changed:
-#             # img = update(img, nb, w, N)
-#             # count += 1
-#             # image.save(str(count) + '.png')
-#     else:
-#         while w.wait_to_collapse:
-#             w.collapse(w.min_entropy_pos())
-#         for i in range(size[0]):
-#             for j in range(size[1]):
-#                 img = update(img, (i, j), w, N)
-#         image.save('final.png')
-
-#
-# print(changed)
-
-# def main(size, entry, N=3, AllRules=False, surveil=False):
-
-#     def update(img, position, w, N):
-#         limit_i, limit_j = 1, 1
-#         if position[0] == w.size[0] - 1:
-#             limit_i = N
-#         if position[1] == w.size[1] - 1:
-#             limit_j = N
-#         for i in range(limit_i):
-#             for j in range(limit_j):
-#                 x, y = position[0] + i, position[1] + j
-#                 keys, values = list(w[position].space.keys()), np.array(list(w[position].space.values()))
-#                 mean = tuple(
-#                     map(lambda x: int(np.average(np.array(x), weights=values)),
-#                         zip(*(w.patterns[index][i][j] for index in keys))))
-#                 img[x, y] = mean
-#         return img
-
-#     w = WaveFunction(size, entry, N=N, AllRules=AllRules)
-#     count = 0
-#     weights = np.array(w.weights)
-#     mean = tuple(
-#         map(lambda x: int(np.average(np.array(x), weights=weights)),
-#             zip(*(pattern[0][0] for pattern in w.patterns.values()))))
-#     image = Image.new('RGB', size, mean)
-#     img = image.load()
-#     image.save(str(count) + '.png')
-
-#     if surveil:
-#         while w.wait_to_collapse:
-#             for pos in w.collapse(w.min_entropy_pos()):
-#                 img = update(img, pos, w, N)
-#                 count += 1
-#                 image.save(str(count) + '.png')
-#             # changed = w.collapse(w.min_entropy_pos())
-#             # for nb in changed:
-#             # img = update(img, nb, w, N)
-#             # count += 1
-#             # image.save(str(count) + '.png')
-#     else:
-#         while w.wait_to_collapse:
-#             w.collapse(w.min_entropy_pos())
-#         for i in range(size[0]):
-#             for j in range(size[1]):
-#                 img = update(img, (i, j), w, N)
-#         image.save('final.png')
-
-#
-# print(changed)
 
 # entry = [
 #     # ['S', 'S', 'S', 'C', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
