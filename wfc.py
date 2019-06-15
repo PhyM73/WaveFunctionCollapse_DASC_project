@@ -187,7 +187,10 @@ class WaveFunction():
             self.wait_to_collapse.remove(position)
             yield position
             yield from self.propagate(position)
+<<<<<<< HEAD
             #self.update(position)
+=======
+>>>>>>> parent of 1067042... Merge branch 'dev_sl' of https://github.com/PhyM73/WaveFunctionCollapse_DASC_project into dev_sl
             # self.propagate(position)
 
     def propagate(self, position):
@@ -206,8 +209,14 @@ class WaveFunction():
                     if not set(self[nb].space.keys()).issubset(available):
                         available = available & set(self[nb].space.keys())
                         if len(available) == 0:
+<<<<<<< HEAD
                             yield from self.backtrack()
                             # return self.backtrack()
+=======
+                            print('no')
+                            return self.backtrack()
+                            # break
+>>>>>>> parent of 1067042... Merge branch 'dev_sl' of https://github.com/PhyM73/WaveFunctionCollapse_DASC_project into dev_sl
 
                         elif self.Stack and (nb not in self.Stack[-1].keys()):
                             # push this changed Grid into the Stack.
@@ -233,8 +242,15 @@ class WaveFunction():
             for (position, space) in step.items():
                 self[position] = Grid(space)
                 self.wait_to_collapse.add(position)
+<<<<<<< HEAD
                 yield position
             # return set(step.keys())
+=======
+                # yield position
+            # yield from [step.keys()]
+            print('back')
+            return set(step.keys())
+>>>>>>> parent of 1067042... Merge branch 'dev_sl' of https://github.com/PhyM73/WaveFunctionCollapse_DASC_project into dev_sl
         else:
             raise CollapseError("No Sulotion")
 
@@ -277,6 +293,7 @@ def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, survei
         return img
 
     w = WaveFunction(size, entry, N=N, AllRules=AllRules)
+<<<<<<< HEAD
     count = 0
     weights = np.array(w.weights)
     mean = tuple(
@@ -399,9 +416,47 @@ def main(size, entry, N=3, AllRules=False, surveil=False):
                 img = update(img, (i, j), w, N)
         image.save('final.png')
 >>>>>>> parent of 3dcfc5b... 将yield改成了集合
+=======
+    count = 0
+    image = Image.new('RGB', size, mean_pixel(w, (0, 0), 0, 0))
+    img = image.load()
+    image.save(str(count) + '.png')
 
-#
-# print(changed)
+    for pos in w.observe(surveil):
+        img = update(img, pos, w, N)
+        if surveil:
+            count += 1
+            image.save(str(count) + '.png')
+    image.save(str(count) + '.png')
+
+    # weights = np.array(w.weights)
+    # mean = tuple(
+    #     map(lambda x: int(np.average(np.array(x), weights=weights)),
+    #         zip(*(pattern[0][0] for pattern in w.patterns.values()))))
+
+    # def buildimage(self):
+    #     weights = np.array(self.weights)
+    #     mean = tuple(map(lambda x: int(np.average(np.array(x), weights = weights)),
+    #         zip(*(pattern[0][0] for pattern in self.patterns.values()))))
+    #     return Image.new('RGB', self.image_size, mean)
+
+    # def update(self, position):
+    #     image = self.image.load()
+    #     limit_i, limit_j = 1,1
+    #     if position[0] == self.size[0]-1:
+    #         limit_i = self.N
+    #     if position[1] == self.size[1]-1:
+    #         limit_j = self.N
+    #     for i in range(limit_i):
+    #         for j in range(limit_j):
+    #             x, y = position[0] + i, position[1] + j
+    #             keys, values = list(self[position].space.keys()), np.array(list(self[position].space.values()))
+    #             #print(keys, values)
+    #             mean = tuple(map(lambda x: int(np.average(np.array(x), weights=values)),
+    #                 zip(*(self.patterns[index][i][j] for index in keys))))
+    #             image[x, y] = mean
+>>>>>>> parent of 1067042... Merge branch 'dev_sl' of https://github.com/PhyM73/WaveFunctionCollapse_DASC_project into dev_sl
+
 
 # def main(size, entry, N=3, AllRules=False, surveil=False):
 
@@ -479,6 +534,7 @@ def main(size, entry, N=3, AllRules=False, surveil=False):
 # ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 entry = image2matrix(r"samples\Village.png")  #路径前加r转义，r'*****'
 # main((25, 25), entry, N=2, surveil=False)
 ImageProcessor(r"samples\Colored City.png", (40, 40), N=2, surveil=False)
@@ -492,6 +548,12 @@ entry = image2matrix(r"samples\Village.png")  #路径前加r转义，r'*****'
 # main((25, 25), entry, N=2, surveil=False)
 ImageProcessor(r"samples\Village.png", (40, 40), N=2, surveil=False)
 >>>>>>> parent of 3dcfc5b... 将yield改成了集合
+=======
+
+entry = image2matrix(r"samples\Village.png")  #路径前加r转义，r'*****'
+ImageProcessor(r"samples\Colored City.png", (40, 40), N=2, surveil=True)
+# main((25, 25), entry, N=2, surveil=False)
+>>>>>>> parent of 1067042... Merge branch 'dev_sl' of https://github.com/PhyM73/WaveFunctionCollapse_DASC_project into dev_sl
 # # 处理图片时调用
 # image1 = Image.new('RGB', (70, 70), (0, 0, 0))
 # result = image1.load()
