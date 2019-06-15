@@ -76,9 +76,10 @@ class WaveFunction():
     def BuildPatterns(self, entry, N=3, Periodic=False):
         """Parses the `entry` matrix. Extracts patterns, weights and adjacent rules. """
         if Periodic:
+            print('a')
             width, height = len(entry) - 1, len(entry[0]) - 1
-            entry = [entry[x][:] + entry[x][:N - 1] for x in range(len(entry))]
-            entry = entry[:] + entry[:N - 1]
+            entry = [entry[x][:] + entry[x][1:N - 1] for x in range(len(entry))]
+            entry = entry[:] + entry[1:N - 1]
         else:
             width, height = len(entry) - N + 1, len(entry[0]) - N + 1
         matrix = [[None] * height for _ in range(width)]
@@ -110,6 +111,12 @@ class WaveFunction():
         if y > 0:
             self.rules[matrix[x][y]][2].add(matrix[x][y - 1])
             self.rules[matrix[x][y - 1]][3].add(matrix[x][y])
+        if Periodic and x == len(matrix) - 1:
+            self.rules[matrix[0][y]][0].add(matrix[x][y])
+            self.rules[matrix[x][y]][1].add(matrix[0][y])
+        if Periodic and y == len(matrix[0]) - 1:
+            self.rules[matrix[x][0]][2].add(matrix[x][y])
+            self.rules[matrix[x][y]][3].add(matrix[x][0])
 
     def make_all_rules(self):
         """Traverses patterns to match all the possible rules.
@@ -231,8 +238,8 @@ class WaveFunction():
                 yield self.collapse(self.min_entropy_pos())
         else:
             while self.wait_to_collapse:
-                list(self.collapse(self.min_entropy_pos()))
-            yield [(x, y) for x in range(self.size[0]) for y in range(self.size[1])]
+                self.collapse(self.min_entropy_pos())
+            yield set((x, y) for x in range(self.size[0]) for y in range(self.size[1]))
 
 
 def image2matrix(image_path):
@@ -261,7 +268,7 @@ def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, survei
                 img[position[0] + i, position[1] + j] = mean_pixel(w, position, i, j)
         return img
 
-    w = WaveFunction(size, entry, N=N, AllRules=AllRules)
+    w = WaveFunction(size, entry, N=N, AllRules=AllRules, Periodic=Periodic)
     count = 0
     image = Image.new('RGB', size, mean_pixel(w, (0, 0), 0, 0))
     img = image.load()
@@ -284,7 +291,7 @@ def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, survei
 
 
 #####################################################################
-ImageProcessor(r"samples\Cats.png", (50, 50), N=4, surveil=False, Periodic=True)
+ImageProcessor(r"samples\Colored City.png", (50, 50), N=3, surveil=False, Periodic=True, AllRules=True)
 
 # entry = [
 #     # ['S', 'S', 'S', 'C', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
@@ -310,8 +317,6 @@ ImageProcessor(r"samples\Cats.png", (50, 50), N=4, surveil=False, Periodic=True)
 #     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
 # ]
 # ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
-
-#entry = image2matrix(r"samples\Village.png")  #路径前加r转义，r'*****'
 
 # # 处理图片时调用
 # image1 = Image.new('RGB', (70, 70), (0, 0, 0))
