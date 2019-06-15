@@ -185,9 +185,8 @@ class WaveFunction():
                 self.Stack.append({position: self[position].space.copy()})
                 self[x, y] = Grid({elem: 1})
             self.wait_to_collapse.remove(position)
-            return self.propagate(position)
-            # yield position
-            # yield from self.propagate(position)
+            yield position
+            yield from self.propagate(position)
             #self.update(position)
             # self.propagate(position)
 
@@ -196,7 +195,7 @@ class WaveFunction():
         This method keeps propagating the consequences of the consequences,and so on until no consequences remain. 
         """
         PropagStack = [position]
-        changed = {position}
+        # changed = {position}
 
         while PropagStack:
             pos = PropagStack.pop()
@@ -207,18 +206,18 @@ class WaveFunction():
                     if not set(self[nb].space.keys()).issubset(available):
                         available = available & set(self[nb].space.keys())
                         if len(available) == 0:
-                            # yield from self.backtrack()
-                            return self.backtrack()
+                            yield from self.backtrack()
+                            # return self.backtrack()
 
                         elif self.Stack and (nb not in self.Stack[-1].keys()):
                             # push this changed Grid into the Stack.
                             self.Stack[-1][nb] = self[nb].space.copy()
                         self[nb] = Grid({state: self.weights[state] for state in available})
                         PropagStack.append(nb)
-                        # yield nb
+                        yield nb
                         #self.update(nb)
-                        changed.add(nb)
-        return changed
+                        # changed.add(nb)
+        # return changed
 
     def backtrack(self):
         """Backtracks to the previous step. 
@@ -234,8 +233,8 @@ class WaveFunction():
             for (position, space) in step.items():
                 self[position] = Grid(space)
                 self.wait_to_collapse.add(position)
-                #yield position
-            return set(step.keys())
+                yield position
+            # return set(step.keys())
         else:
             raise CollapseError("No Sulotion")
 
@@ -243,12 +242,11 @@ class WaveFunction():
         '''Observe the whole WaveFunction'''
         if surveil:
             while self.wait_to_collapse:
-                yield self.collapse(self.min_entropy_pos())
+                yield from self.collapse(self.min_entropy_pos())
         else:
             while self.wait_to_collapse:
-                self.collapse(self.min_entropy_pos())
-            yield set((x, y) for x in range(self.size[0]) for y in range(self.size[1]))
-            # yield from [(x, y) for x in range(self.size[0]) for y in range(self.size[1])]
+                list(self.collapse(self.min_entropy_pos()))
+            yield from [(x, y) for x in range(self.size[0]) for y in range(self.size[1])]
 
 
 def image2matrix(image_path):
@@ -279,13 +277,44 @@ def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, survei
         return img
 
     w = WaveFunction(size, entry, N=N, AllRules=AllRules)
+    count = 0
     weights = np.array(w.weights)
     mean = tuple(
         map(lambda x: int(np.average(np.array(x), weights=weights)),
             zip(*(pattern[0][0] for pattern in w.patterns.values()))))
     image = Image.new('RGB', size, mean)
     img = image.load()
+    image.save(str(count) + '.png')
+
+    for pos in w.observe(surveil):
+        img = update(img, pos, w, N)
+        if surveil:
+            count += 1
+            image.save(str(count) + '.png')
+    image.save(str(count) + '.png')
+
+
+def main(size, entry, N=3, AllRules=False, surveil=False):
+
+    def update(img, position, w, N):
+        limit_i, limit_j = 1, 1
+        if position[0] == w.size[0] - 1:
+            limit_i = N
+        if position[1] == w.size[1] - 1:
+            limit_j = N
+        for i in range(limit_i):
+            for j in range(limit_j):
+                x, y = position[0] + i, position[1] + j
+                keys, values = list(w[position].space.keys()), np.array(list(w[position].space.values()))
+                mean = tuple(
+                    map(lambda x: int(np.average(np.array(x), weights=values)),
+                        zip(*(w.patterns[index][i][j] for index in keys))))
+                img[x, y] = mean
+        return img
+
+    w = WaveFunction(size, entry, N=N, AllRules=AllRules)
     count = 0
+<<<<<<< HEAD
     image.save('result\\' + str(count) + '.png')
     if surveil: count += 1
 
@@ -342,6 +371,34 @@ def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, survei
 #             for j in range(size[1]):
 #                 img = update(img, (i, j), w, N)
 #         image.save('final.png')
+=======
+    weights = np.array(w.weights)
+    mean = tuple(
+        map(lambda x: int(np.average(np.array(x), weights=weights)),
+            zip(*(pattern[0][0] for pattern in w.patterns.values()))))
+    image = Image.new('RGB', size, mean)
+    img = image.load()
+    image.save(str(count) + '.png')
+
+    if surveil:
+        while w.wait_to_collapse:
+            for pos in w.collapse(w.min_entropy_pos()):
+                img = update(img, pos, w, N)
+                count += 1
+                image.save(str(count) + '.png')
+            # changed = w.collapse(w.min_entropy_pos())
+            # for nb in changed:
+            # img = update(img, nb, w, N)
+            # count += 1
+            # image.save(str(count) + '.png')
+    else:
+        while w.wait_to_collapse:
+            w.collapse(w.min_entropy_pos())
+        for i in range(size[0]):
+            for j in range(size[1]):
+                img = update(img, (i, j), w, N)
+        image.save('final.png')
+>>>>>>> parent of 3dcfc5b... 将yield改成了集合
 
 #
 # print(changed)
@@ -421,6 +478,7 @@ def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, survei
 # ]
 # ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
 <<<<<<< HEAD
+<<<<<<< HEAD
 entry = image2matrix(r"samples\Village.png")  #路径前加r转义，r'*****'
 # main((25, 25), entry, N=2, surveil=False)
 ImageProcessor(r"samples\Colored City.png", (40, 40), N=2, surveil=False)
@@ -429,6 +487,11 @@ ImageProcessor(r"samples\Colored City.png", (40, 40), N=2, surveil=False)
 #main((25, 25), entry, N=2, surveil=False)
 ImageProcessor(r"samples\Cats.png", (50, 50), N=4, surveil=False)
 >>>>>>> dev_sl
+=======
+entry = image2matrix(r"samples\Village.png")  #路径前加r转义，r'*****'
+# main((25, 25), entry, N=2, surveil=False)
+ImageProcessor(r"samples\Village.png", (40, 40), N=2, surveil=False)
+>>>>>>> parent of 3dcfc5b... 将yield改成了集合
 # # 处理图片时调用
 # image1 = Image.new('RGB', (70, 70), (0, 0, 0))
 # result = image1.load()
