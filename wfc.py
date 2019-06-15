@@ -62,25 +62,23 @@ class WaveFunction():
         if N > 1 and AllRules:
             self.make_all_rules()
 
-        #self.image_size = size
         self.size = (size[0] - N + 1, size[1] - N + 1)
         self.wait_to_collapse = set((x, y) for x in range(self.size[0]) for y in range(self.size[1]))
-        self.Stack = []  # 储存过程的栈，其中存储已经改变过的点坐标以及状态空间为元素为坐标到状态空间的字典
+        self.Stack = []
 
-        state_space = {state: self.weights[state] for state in self.patterns.keys()}
-        self.wave = [[Grid(state_space.copy()) for i in range(self.size[1])] for j in range(self.size[0])]
         # Initializes the 2-D WaveFunction matrix, each Grid of the matrix
         # starts with all states as possible. No state is forbidden yet.
+        state_space = {state: self.weights[state] for state in self.patterns.keys()}
+        self.wave = [[Grid(state_space.copy()) for i in range(self.size[1])] for j in range(self.size[0])]
 
         self.N = N
-        # self.image = self.buildimage()
 
     def BuildPatterns(self, entry, N=3, Periodic=False):
         """Parses the `entry` matrix. Extracts patterns, weights and adjacent rules. """
         if Periodic:
             width, height = len(entry) - 1, len(entry[0]) - 1
-            entry = [entry[x][:] + entry[x][1:N - 1] for x in range(len(entry))]
-            entry = entry[:] + entry[1:N - 1]
+            entry = [entry[x][:] + entry[x][:N - 1] for x in range(len(entry))]
+            entry = entry[:] + entry[:N - 1]
         else:
             width, height = len(entry) - N + 1, len(entry[0]) - N + 1
         matrix = [[None] * height for _ in range(width)]
@@ -90,8 +88,8 @@ class WaveFunction():
                 # Extract an N*N matrix as a pattern with the upper left corner being (x, y).
                 pat = tuple(tuple(entry[x1][y:y + N]) for x1 in range(x, x + N))
 
-                # If this pattern already exists, simply increment its weight.
-                # Otherwise, records the new pattern and initializes its weight as 1, then increment the pattern index.
+                # If this pattern already exists, simply increment its weight. Otherwise, records
+                # the new pattern and initializes its weight as 1, then increment the pattern index.
                 try:
                     matrix[x][y] = self.patterns[pat]
                     self.weights[matrix[x][y]] += 1
@@ -164,8 +162,9 @@ class WaveFunction():
         """Collapses the grid at `position`, and then propagates the consequences. """
         (x, y) = position
         if len(self[position]) < 1:
-            yield from self.backtrack()
-        else:  # 有另外的选择，在状态空间删去已选的pattern后入栈
+            # yield from self.backtrack()
+            return self.backtrack()
+        else:
             if len(self[position]) > 1:
                 # Choose one possible pattern randomly and push this changed Grid into the Stack.
                 states, w = list(self[position].space.keys()), list(self[position].space.values())
@@ -184,7 +183,7 @@ class WaveFunction():
         This method keeps propagating the consequences of the consequences,and so on until no consequences remain. 
         """
         PropagStack = [position]
-        # changed = {position}
+        changed = {position}
 
         while PropagStack:
             pos = PropagStack.pop()
@@ -204,10 +203,10 @@ class WaveFunction():
                             self.Stack[-1][nb] = self[nb].space.copy()
                         self[nb] = Grid({state: self.weights[state] for state in available})
                         PropagStack.append(nb)
-                        yield nb
-                        #self.update(nb)
-                        # changed.add(nb)
-        # return changed
+                        # yield nb
+                        # self.update(nb)
+                        changed.add(nb)
+        return changed
 
     def backtrack(self):
         """Backtracks to the previous step. 
@@ -229,11 +228,11 @@ class WaveFunction():
         '''Observe the whole WaveFunction'''
         if surveil:
             while self.wait_to_collapse:
-                yield from self.collapse(self.min_entropy_pos())
+                yield self.collapse(self.min_entropy_pos())
         else:
             while self.wait_to_collapse:
                 list(self.collapse(self.min_entropy_pos()))
-            yield from [(x, y) for x in range(self.size[0]) for y in range(self.size[1])]
+            yield [(x, y) for x in range(self.size[0]) for y in range(self.size[1])]
 
 
 def image2matrix(image_path):
@@ -259,23 +258,33 @@ def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, survei
         limit_j = N if position[1] == w.size[1] - 1 else 1
         for i in range(limit_i):
             for j in range(limit_j):
-                x, y = position[0] + i, position[1] + j
-                img[x, y] = mean_pixel(w, position, i, j)
+                img[position[0] + i, position[1] + j] = mean_pixel(w, position, i, j)
         return img
 
     w = WaveFunction(size, entry, N=N, AllRules=AllRules)
     count = 0
     image = Image.new('RGB', size, mean_pixel(w, (0, 0), 0, 0))
     img = image.load()
-    image.save(str(count) + '.png')
+    image.save('result\\' + str(count) + '.png')
 
-    for pos in w.observe(surveil):
-        img = update(img, pos, w, N)
-        if surveil:
-            count += 1
-            image.save(str(count) + '.png')
-    image.save(str(count) + '.png')
+    if surveil: count += 1
 
+    for changed in w.observe(surveil):
+        for pos in changed:
+            img = update(img, pos, w, N)
+        image.save('result\\' + str(count) + '.png')
+        count += 1
+
+    # for pos in w.observe(surveil):
+    #     img = update(img, pos, w, N)
+    #     if surveil:
+    #         count += 1
+    #         image.save('result\\' + str(count) + '.png')
+    # image.save('result\\' + str(count) + '.png')
+
+
+#####################################################################
+ImageProcessor(r"samples\Cats.png", (50, 50), N=4, surveil=False, Periodic=True)
 
 # entry = [
 #     # ['S', 'S', 'S', 'C', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
@@ -303,8 +312,6 @@ def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, survei
 # ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
 
 #entry = image2matrix(r"samples\Village.png")  #路径前加r转义，r'*****'
-#main((25, 25), entry, N=2, surveil=False)
-ImageProcessor(r"samples\Cats.png", (50, 50), N=4, surveil=False)
 
 # # 处理图片时调用
 # image1 = Image.new('RGB', (70, 70), (0, 0, 0))
