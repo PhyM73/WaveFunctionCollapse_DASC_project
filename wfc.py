@@ -225,7 +225,7 @@ class WaveFunction():
         """
         PropagStack = [position]
         changed = {position}
- 
+
         while PropagStack:
             pos = PropagStack.pop()
 
@@ -252,6 +252,7 @@ class WaveFunction():
     def backtrack(self):
         """Backtracks to the previous step. 
         If there is no way to backtrack then this method raises CollapseError. """
+        print('0')
         if len(self.Stack):
             step = self.Stack.pop()
             # Restore all the Girds affected by the last collapse
@@ -303,27 +304,29 @@ def ImageProcessor(image_path, size, N, options):
         return matrix
 
     w = WaveFunction(size, entry, N=N, **options)
-    fig = plt.figure(figsize=(6, 6*(size[0]/size[1])))
+    fig = plt.figure(figsize=(6, 6 * (size[0] / size[1])))
     matrix = np.array([[mean_pixel(w, (0, 0), 0, 0)] * size[1] for _ in range(size[0])])
     im = plt.imshow(matrix)
 
     plt.axis('off')
     plt.gca().xaxis.set_major_locator(plt.NullLocator())
     plt.gca().yaxis.set_major_locator(plt.NullLocator())
-    plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = 0, wspace = 0)
-    plt.margins(0,0)
-    plt.pause(0.0001)
+    plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
+    plt.margins(0, 0)
+    plt.pause(0.0000001)
 
     for changed in w.observe(surveil):
         for pos in changed:
+            # for pos in w.observe(surveil):
             matrix = update(matrix, pos, w, N)
-            im.set_array(matrix)
+            im.set_data(matrix)
             fig.canvas.draw()
-            plt.pause(0.0000001)
+    plt.pause(0.0000001)
     if tk.messagebox.askyesno(title='Save', message='Save the image?'):
-        path = tkinter.filedialog.asksaveasfilename(defaultextension='.jpg', filetypes= [("PNG", ".png"), ("JPG" , ".jpg")],
-                initialdir='result')
-        fig.savefig(path, dpi=150, pad_inches = 0)
+        path = tkinter.filedialog.asksaveasfilename(defaultextension='.png',
+                                                    filetypes=[("PNG", ".png"), ("JPG", ".jpg")],
+                                                    initialdir='result')
+        fig.savefig(path, dpi=150, pad_inches=0)
     plt.show()
 
 
@@ -374,15 +377,13 @@ Reflection = tk.IntVar()
 Reflection.set(0)
 tk.Checkbutton(frame, text='Reflection', variable=Reflection).grid(row=4, column=2, pady=0)
 
-
 path = tk.StringVar()
 path.set('')
+
 
 def get_image():
     path.set(tkinter.filedialog.askopenfilename())
     return True
-
-
 
 
 def main():
@@ -391,10 +392,11 @@ def main():
         'surveil': surveil.get(),
         'PeriodicInput': PeriodicInput.get(),
         'PeriodicOutput': PeriodicOutput.get(),
-        'Rotation':Rotation.get(),
+        'Rotation': Rotation.get(),
         'Reflection': Reflection.get()
     }
     ImageProcessor(path.get(), (set_height.get(), set_width.get()), N=set_N.get(), options=options)
+
 
 tk.Button(frame, text="open file", command=get_image).grid(row=5, column=1)
 tk.Button(frame, text="begin", command=main).grid(row=5, column=2)
