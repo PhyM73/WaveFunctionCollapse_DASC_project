@@ -1,20 +1,25 @@
 import math
 import random
+# import imageio
+# import glob
+# import re
 try:
-    import Image
+    import Image as Im
 except:
-    from PIL import Image
+    from PIL import Image as Im
 import numpy as np
 
-#import matplotlib.pyplot as plt
+from tkinter import *
+from tkinter.filedialog import *
 
+import matplotlib.pyplot as plt
 
-class Grid():
-    """Grid object which contains its state space and Shannon entropy."""
+class Lattice():
+    """Lattice object which contains its state space and Shannon entropy."""
 
     def __init__(self, state_space):
         self.space = state_space  # state_space = {state:weight}
-        self.entropy = Grid.shannon(state_space)
+        self.entropy = Lattice.shannon(state_space)
 
     @staticmethod
     def shannon(state_space):
@@ -45,7 +50,7 @@ class WaveFunction():
     然后按照WFC算法对波函数进行观测。   
 
     Attributes：
-        wave: A 2-D matrix which contains all the Grids.
+        wave: A 2-D matrix which contains all the Lattices.
 
         patterns: {i1:p1, i2:p2, ...}     
         weights: [w1, w2, ...]     
@@ -66,10 +71,10 @@ class WaveFunction():
         self.wait_to_collapse = set((x, y) for x in range(self.size[0]) for y in range(self.size[1]))
         self.Stack = []
 
-        # Initializes the 2-D WaveFunction matrix, each Grid of the matrix
+        # Initializes the 2-D WaveFunction matrix, each Lattice of the matrix
         # starts with all states as possible. No state is forbidden yet.
         state_space = {state: self.weights[state] for state in self.patterns.keys()}
-        self.wave = [[Grid(state_space.copy()) for i in range(self.size[1])] for j in range(self.size[0])]
+        self.wave = [[Lattice(state_space.copy()) for i in range(self.size[1])] for j in range(self.size[0])]
 
         self.N = N
 
@@ -137,7 +142,7 @@ class WaveFunction():
         self.wave[index[0]][index[1]] = value
 
     def min_entropy_pos(self):
-        """Returns the position of the Grid whose statespace has the lowest entropy."""
+        """Returns the position of the Lattice whose statespace has the lowest entropy."""
         min_entropy = float("inf")
         for lattice in self.wait_to_collapse:
             noise = random.random() / 1000
@@ -148,7 +153,7 @@ class WaveFunction():
         return position
 
     def neighbor(self, position):
-        """Yields neighboring Grids and their directions of a given `position`."""
+        """Yields neighboring Lattices and their directions of a given `position`."""
         if position[0] > 0:
             yield (position[0] - 1, position[1]), 0
         if position[0] < self.size[0] - 1:
@@ -159,19 +164,19 @@ class WaveFunction():
             yield (position[0], position[1] + 1), 3
 
     def collapse(self, position):
-        """Collapses the grid at `position`, and then propagates the consequences. """
+        """Collapses the Lattice at `position`, and then propagates the consequences. """
         (x, y) = position
         if len(self[position]) < 1:
             # yield from self.backtrack()
             return self.backtrack()
         else:
             if len(self[position]) > 1:
-                # Choose one possible pattern randomly and push this changed Grid into the Stack.
+                # Choose one possible pattern randomly and push this changed Lattice into the Stack.
                 states, w = list(self[position].space.keys()), list(self[position].space.values())
                 elem = random.choices(states, weights=w)[0]
                 del self.wave[x][y].space[elem]
                 self.Stack.append({position: self[position].space.copy()})
-                self[x, y] = Grid({elem: 1})
+                self[x, y] = Lattice({elem: 1})
             self.wait_to_collapse.remove(position)
             return self.propagate(position)
             # yield position
@@ -199,9 +204,9 @@ class WaveFunction():
                             # break
 
                         elif self.Stack and (nb not in self.Stack[-1].keys()):
-                            # push this changed Grid into the Stack.
+                            # push this changed Lattice into the Stack.
                             self.Stack[-1][nb] = self[nb].space.copy()
-                        self[nb] = Grid({state: self.weights[state] for state in available})
+                        self[nb] = Lattice({state: self.weights[state] for state in available})
                         PropagStack.append(nb)
                         # yield nb
                         # self.update(nb)
@@ -215,7 +220,7 @@ class WaveFunction():
             step = self.Stack.pop()
             # Restore all the Girds affected by the last collapse
             for (position, space) in step.items():
-                self[position] = Grid(space)
+                self[position] = Lattice(space)
                 self.wait_to_collapse.add(position)
                 # yield position
             # yield from [step.keys()]
@@ -237,98 +242,136 @@ class WaveFunction():
 
 def image2matrix(image_path):
     """Convert image at `image_path` to matrix."""
-    image = Image.open(image_path)
+    image = Im.open(image_path)
     size = image.size
     load = image.load()
     return [[load[x, y] for y in range(size[1])] for x in range(size[0])]
 
 
 def mean_pixel(wave, position, i, j):
+    """"Get the weighted mean of the state space of position as the pixel there"""
     keys, values = list(wave[position].space.keys()), np.array(list(wave[position].space.values()))
     return tuple(
         map(lambda x: int(np.average(np.array(x), weights=values)),
             zip(*(wave.patterns[index][i][j] for index in keys))))
 
 
+# def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, surveil=False):
+#     entry = image2matrix(image_path)
+
+#     def update(img, position, w, N):
+#         limit_i = N if position[0] == w.size[0] - 1 else 1
+#         limit_j = N if position[1] == w.size[1] - 1 else 1
+#         for i in range(limit_i):
+#             for j in range(limit_j):
+#                 img[position[0] + i, position[1] + j] = mean_pixel(w, position, i, j)
+#         return img
+
+#     w = WaveFunction(size, entry, N=N, AllRules=AllRules, Periodic=Periodic)
+#     count = 0
+#     image = Im.new('RGB', size, mean_pixel(w, (0, 0), 0, 0))
+#     img = image.load()
+#     image.save('result\\' + str(count) + '.png')
+
+#     if surveil: count += 1
+
+#     for changed in w.observe(surveil):
+#         for pos in changed:
+#             img = update(img, pos, w, N)
+#         image.save('result\\' + str(count) + '.png')
+#         count += 1
+
 def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, surveil=False):
     entry = image2matrix(image_path)
 
-    def update(img, position, w, N):
+    def update(matrix, position, w, N):
         limit_i = N if position[0] == w.size[0] - 1 else 1
         limit_j = N if position[1] == w.size[1] - 1 else 1
         for i in range(limit_i):
             for j in range(limit_j):
-                img[position[0] + i, position[1] + j] = mean_pixel(w, position, i, j)
-        return img
+                matrix[position[0] + i, position[1] + j] = mean_pixel(w, position, i, j)
+        return matrix
 
     w = WaveFunction(size, entry, N=N, AllRules=AllRules)
-    count = 0
-    image = Image.new('RGB', size, mean_pixel(w, (0, 0), 0, 0))
-    img = image.load()
-    image.save('result\\' + str(count) + '.png')
-
-    if surveil: count += 1
+    fig = plt.figure(figsize = (8,8))
+    matrix = np.array([[mean_pixel(w, (0, 0), 0, 0)]*size[0] for _ in range(size[1])])
+    print(list(matrix))
+    im = plt.imshow(matrix)
+    plt.pause(0.001)
 
     for changed in w.observe(surveil):
         for pos in changed:
-            img = update(img, pos, w, N)
-        image.save('result\\' + str(count) + '.png')
-        count += 1
-
-    # for pos in w.observe(surveil):
-    #     img = update(img, pos, w, N)
-    #     if surveil:
-    #         count += 1
-    #         image.save('result\\' + str(count) + '.png')
+            matrix = update(matrix, pos, w, N)
+        im.set_array(matrix)
+        fig.canvas.draw()
+        plt.pause(0.001)
+    plt.show()
+    
+    # count = 0
+    # image = Im.new('RGB', size, mean_pixel(w, (0, 0), 0, 0))
+    # img = image.load()
     # image.save('result\\' + str(count) + '.png')
 
+    # if surveil: count += 1
 
-#####################################################################
-ImageProcessor(r"samples\Cats.png", (50, 50), N=4, surveil=False, Periodic=True)
 
-# entry = [
-#     # ['S', 'S', 'S', 'C', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-#     ['S', 'S', 'C', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-#     ['C', 'C', 'C', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'C', 'L', 'L'],
-#     ['L', 'L', 'C', 'C', 'L', 'L', 'L', 'C', 'S', 'C', 'L'],
-#     ['L', 'C', 'S', 'S', 'C', 'L', 'L', 'C', 'S', 'C', 'L'],
-#     ['C', 'S', 'S', 'S', 'S', 'C', 'C', 'S', 'S', 'S', 'C'],
-#     ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
-#     ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L', 'L'],
-#     ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
-#     ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C'],
-#     ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C'],
-#     ['L', 'C', 'S', 'S', 'S', 'C', 'S', 'S', 'S', 'C', 'L'],
-#     ['L', 'L', 'C', 'C', 'C', 'L', 'C', 'S', 'C', 'L', 'L'],
-#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'C', 'L', 'L', 'L'],
-#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-# ]
-# ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
+#################################################3
+# ImageProcessor(r"samples\Cats.png", (50, 50), N=4, surveil=False, Periodic=True)
+root = Tk()
+root.title("WaveFunctionCollapse")
+root.geometry("600x400")
 
-#entry = image2matrix(r"samples\Village.png")  #路径前加r转义，r'*****'
+frame = Frame(root)
+frame.pack(padx = 10, pady = 10)
 
-# # 处理图片时调用
-# image1 = Image.new('RGB', (70, 70), (0, 0, 0))
-# result = image1.load()
-# for i in range(w.size[0]):
-#     for j in range(w.size[1]):
-#         result[i, j] = w.patterns[list(w[i, j].space.keys())[0]][0][0]
-# image1.save('emmmm.png')
-# image1.show()
-# 处理图片时调用
+Label(frame, text = 'N:').grid(row = 0, column = 0, sticky = W)
+set_N = Scale(frame, from_ = 1, to = 4, length = 100, tickinterval = 1, orient = HORIZONTAL)
+set_N.grid(row = 0, column = 1, sticky = W, columnspan = 3 )
 
-#处理矩阵时调用
-# result = [[None] * w.size[1] for _ in range(w.size[0])]
-# for i in range(w.size[0]):
-#     for j in range(w.size[1]):
-#         result[i][j] = w.patterns[list(w.wave[i][j].space.keys())[0]][0][0]
-# for line in result:
-#     for i in line:
-#         print(i, end='')
-#     print('')
+Label(frame, text = 'width:').grid(row = 1, column = 0, sticky = W)
+set_width = Scale(frame, from_ = 10, to = 100, length = 300, tickinterval = 10, orient = HORIZONTAL)
+set_width.grid(row = 1, column = 1, columnspan = 3)
+
+Label(frame, text = 'height:').grid(row = 2, column = 0, sticky = W)
+set_height = Scale(frame, from_ = 10, to = 100, length = 300, tickinterval = 10, orient = HORIZONTAL)
+set_height.grid(row = 2, column = 1, columnspan = 3)
+
+Label(frame, text = 'parameters:').grid(row = 3, column = 0, sticky = W)
+
+AL = LabelFrame(frame, text = "AllRules")
+AL.grid(row = 3, column = 1, pady = 30)
+AllRules = BooleanVar()
+AllRules.set(False)
+Radiobutton(AL, text ='False', variable = AllRules, value = False).pack() 
+Radiobutton(AL, text ='True', variable = AllRules, value = True).pack()
+
+PL = LabelFrame(frame, text = "Periodic")
+PL.grid(row = 3, column = 2, pady = 30)
+Periodic = BooleanVar()
+Periodic.set(False)
+Radiobutton(PL, text ='False', variable = Periodic, value = False).pack() 
+Radiobutton(PL, text ='True', variable = Periodic, value = True).pack()
+
+SL = LabelFrame(frame, text = "Surveil")
+SL.grid(row = 3, column = 3, pady = 30)
+surveil = BooleanVar()
+surveil.set(False)
+Radiobutton(SL, text ='False', variable = surveil, value = False).pack() 
+Radiobutton(SL, text ='True', variable = surveil, value = True).pack()
+
+path = StringVar()
+path.set('')
+def get_image():
+    path.set(askopenfilename())
+    return True
+# im= im.resize((400,400),Im.ANTIALIAS)
+# # im.show()
+def main():
+    ImageProcessor(path.get(), (set_width.get(), set_height.get()), N=set_N.get(),
+         AllRules=AllRules.get(), surveil=surveil.get(), Periodic=Periodic.get())
+    
+
+Button(frame, text = "open file",command = get_image).grid(row = 4, column = 1) 
+Button(frame, text = "begin", command = main).grid(row = 4, column = 2)
+
+mainloop()
