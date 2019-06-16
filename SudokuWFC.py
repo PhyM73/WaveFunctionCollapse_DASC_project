@@ -42,6 +42,7 @@ class Sudoku:
                     self.array[x].append(Cell(self.result[x], [self.result[i][y] for i in range(9)], label))
     
     def find_min(self):
+        #寻找可能性最小的点
         choice = -1
         pos = [-1,-1]
         for x in range(9):
@@ -54,6 +55,7 @@ class Sudoku:
         return [choice, pos] 
 
     def influnence(self, num, x ,y):
+        #传递影响
         self.array[x][y] = 0
         label = []
         for x1 in range(x-x%3, x-x%3+3):
@@ -72,11 +74,13 @@ class Sudoku:
                 self.array[x1][y1].remove(num)
 
     def go_back(self):
+        #回溯
         back = self.process.pop()
         self.result = back[0]
         self.array = back[1]
         
     def fill(self):
+        #得到一个解
         gap = self.find_min()
         while gap[0] != -1:
             self.i += 1
@@ -105,6 +109,7 @@ class Sudoku:
         return True
 
     def fill_all(self):
+        #没有唯一解，调用此函数可以得到所有解
         gap = self.find_min()
         while gap[0] != -1 or self.process != []:
             self.i += 1
@@ -172,7 +177,7 @@ w = Sudoku([
     [0,6,0,5,0,0,0,0,9],
     [0,0,4,0,0,0,0,3,0],
     [0,0,0,0,0,9,7,0,0]
-])#the most difficult sudoku """
+])"""
 #t1 = time.process_time()
 t1 = time.perf_counter()
 #w.fill()
