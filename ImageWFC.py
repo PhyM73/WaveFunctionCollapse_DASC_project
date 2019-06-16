@@ -1,4 +1,4 @@
-import WFC
+import wfc
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -32,7 +32,7 @@ def ImageProcessor(image_path, size, N, options):
                 matrix[position[0] + i, position[1] + j] = mean_pixel(w, position, i, j)
         return matrix
 
-    w = WFC.WaveFunction(size, entry, N=N, **options)
+    w = wfc.WaveFunction(size, entry, N=N, **options)
     fig = plt.figure(figsize=(4*(size[1]/size[0]), 4))
     matrix = np.array([[mean_pixel(w, (0, 0), 0, 0)] * size[1] for _ in range(size[0])])
     im = plt.imshow(matrix)
