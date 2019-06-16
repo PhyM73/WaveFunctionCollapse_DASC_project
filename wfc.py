@@ -3,16 +3,17 @@ import random
 # import imageio
 # import glob
 # import re
-try:
-    import Image as Im
-except:
-    from PIL import Image as Im
+# try:
+#     import Image as Im
+# except:
+#     from PIL import Image as Im
 import numpy as np
 
 from tkinter import *
 from tkinter.filedialog import *
 
 import matplotlib.pyplot as plt
+import matplotlib
 
 class Lattice():
     """Lattice object which contains its state space and Shannon entropy."""
@@ -91,6 +92,7 @@ class WaveFunction():
         for x in range(width):
             for y in range(height):
                 # Extract an N*N matrix as a pattern with the upper left corner being (x, y).
+                # print(type(entry[0][0]))
                 pat = tuple(tuple(entry[x1][y:y + N]) for x1 in range(x, x + N))
 
                 # If this pattern already exists, simply increment its weight. Otherwise, records
@@ -242,10 +244,10 @@ class WaveFunction():
 
 def image2matrix(image_path):
     """Convert image at `image_path` to matrix."""
-    image = Im.open(image_path)
-    size = image.size
-    load = image.load()
-    return [[load[x, y] for y in range(size[1])] for x in range(size[0])]
+    im = matplotlib.image.imread('完成\samples\Angular.png')
+    im=[[tuple(im[x][y])for y in range(im.shape[1])] for x in range(im.shape[0])]
+    
+    return im
 
 
 def mean_pixel(wave, position, i, j):
@@ -297,14 +299,14 @@ def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, survei
     matrix = np.array([[mean_pixel(w, (0, 0), 0, 0)]*size[0] for _ in range(size[1])])
     print(list(matrix))
     im = plt.imshow(matrix)
-    plt.pause(0.001)
+    # plt.pause(0.001)
 
     for changed in w.observe(surveil):
         for pos in changed:
             matrix = update(matrix, pos, w, N)
         im.set_array(matrix)
         fig.canvas.draw()
-        plt.pause(0.001)
+        # plt.pause(0.001)
     plt.show()
     
     # count = 0
