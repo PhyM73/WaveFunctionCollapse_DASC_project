@@ -1,11 +1,5 @@
 import math
 import random
-import numpy as np
-
-import tkinter as tk
-import matplotlib.pyplot as plt
-import matplotlib
-import tkinter.filedialog
 
 
 class Knot():
@@ -65,7 +59,7 @@ class WaveFunction():
                  PeriodicOutput=False):
         # 初始化patterns
         self.N = N
-        self.options = {'PeriIpt': PeriodicInput, 'PeriOpt': PeriodicOutput, 'Rot': Rotation, 'Ref': Reflection}
+        self.options = {'PeriIpt': PeriodicInput, 'PeriOpt': PeriodicOutput, 'Rot': Rotation, 'Ref': Reflection,'surv':surveil}
         self.patterns, self.weights, self.rules = {}, [], []
         self.BuildPatterns(entry)
         self.patterns = {index: pattern for pattern, index in self.patterns.items()}
@@ -202,7 +196,6 @@ class WaveFunction():
         """Collapses the Knot at `position`, and then propagates the consequences. """
         (x, y) = position
         if len(self[position]) < 1:
-            # yield from self.backtrack()
             return self.backtrack()
         else:
             if len(self[position]) > 1:
@@ -214,9 +207,6 @@ class WaveFunction():
                 self[x, y] = Knot({elem: 1})
             self.wait_to_collapse.remove(position)
             return self.propagate(position)
-            # yield position
-            # yield from self.propagate(position)
-            # self.propagate(position)
 
     def propagate(self, position):
         """Propagates the consequences of the wavefunction collapse or statespace 
@@ -235,17 +225,13 @@ class WaveFunction():
                     if not set(self[nb].space.keys()).issubset(available):
                         available = available & set(self[nb].space.keys())
                         if len(available) == 0:
-                            # print('no')
                             return self.backtrack()
-                            # break
 
                         elif self.Stack and (nb not in self.Stack[-1].keys()):
                             # push this changed Knot into the Stack.
                             self.Stack[-1][nb] = self[nb].space.copy()
                         self[nb] = Knot({state: self.weights[state] for state in available})
                         PropagStack.append(nb)
-                        # yield nb
-                        # self.update(nb)
                         changed.add(nb)
         return changed
 
@@ -258,146 +244,20 @@ class WaveFunction():
             for (position, space) in step.items():
                 self[position] = Knot(space)
                 self.wait_to_collapse.add(position)
-                # yield position
-            # yield from [step.keys()]
-            # print('back')
             return set(step.keys())
         else:
             raise CollapseError("No Sulotion")
 
     def observe(self, surveil):
         '''Observe the whole WaveFunction'''
-        if surveil:
-            while self.wait_to_collapse:
-                yield self.collapse(self.min_entropy_pos())
-        else:
-            while self.wait_to_collapse:
-                list(self.collapse(self.min_entropy_pos()))
-            yield [(x, y) for x in range(self.size[0]) for y in range(self.size[1])]
+        try:
+            if surveil:
+                while self.wait_to_collapse:
+                    yield self.collapse(self.min_entropy_pos())
+            else:
+                while self.wait_to_collapse:
+                    list(self.collapse(self.min_entropy_pos()))
+                yield [(x, y) for x in range(self.size[0]) for y in range(self.size[1])]
+        except CollapseError:
+            raise CollapseError
 
-
-def image2matrix(image_path):
-    """Convert image at `image_path` to matrix."""
-    im = matplotlib.image.imread(image_path)
-    img = tuple(tuple(tuple(im[x][y]) for y in range(im.shape[1])) for x in range(im.shape[0]))
-    return img
-
-
-def mean_pixel(wave, position, i, j):
-    """Get the weighted mean of the state space of position as the pixel there"""
-    keys, values = list(wave[position].space.keys()), np.array(list(wave[position].space.values()))
-    return tuple(
-        map(lambda x: np.average(np.array(x), weights=values), zip(*(wave.patterns[index][i][j] for index in keys))))
-
-
-def ImageProcessor(image_path, size, N, options):
-
-    entry = image2matrix(image_path)
-
-    def update(matrix, position, w, N):
-        limit_i = N if position[0] == w.size[0] - 1 else 1
-        limit_j = N if position[1] == w.size[1] - 1 else 1
-        for i in range(limit_i):
-            for j in range(limit_j):
-                matrix[position[0] + i, position[1] + j] = mean_pixel(w, position, i, j)
-        return matrix
-
-    w = WaveFunction(size, entry, N=N, **options)
-    fig = plt.figure(figsize=(6, 6*(size[0]/size[1])))
-    matrix = np.array([[mean_pixel(w, (0, 0), 0, 0)] * size[1] for _ in range(size[0])])
-    im = plt.imshow(matrix)
-
-    plt.axis('off')
-    plt.gca().xaxis.set_major_locator(plt.NullLocator())
-    plt.gca().yaxis.set_major_locator(plt.NullLocator())
-    plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = 0, wspace = 0)
-    plt.margins(0,0)
-    plt.pause(0.0001)
-
-    for changed in w.observe(surveil):
-        for pos in changed:
-            matrix = update(matrix, pos, w, N)
-            im.set_array(matrix)
-            fig.canvas.draw()
-            plt.pause(0.0000001)
-    if tk.messagebox.askyesno(title='Save', message='Save the image?'):
-        path = tkinter.filedialog.asksaveasfilename(defaultextension='.jpg', filetypes= [("PNG", ".png"), ("JPG" , ".jpg")],
-                initialdir='result')
-        fig.savefig(path, dpi=150, pad_inches = 0)
-    plt.show()
-
-
-#################################################3
-# ImageProcessor(r"samples\Cats.png", (50, 50), N=4, surveil=False, Periodic=True)
-root = tk.Tk()
-root.title("WaveFunctionCollapse")
-root.geometry("600x400")
-
-frame = tk.Frame(root)
-frame.pack(padx=10, pady=10)
-
-tk.Label(frame, text='N:').grid(row=0, column=0, sticky=tk.W)
-set_N = tk.Scale(frame, from_=1, to=4, length=100, tickinterval=1, orient=tk.HORIZONTAL)
-set_N.grid(row=0, column=1, sticky=tk.W, columnspan=3)
-
-tk.Label(frame, text='width:').grid(row=1, column=0, sticky=tk.W)
-set_width = tk.Scale(frame, from_=10, to=100, length=300, tickinterval=10, orient=tk.HORIZONTAL)
-set_width.grid(row=1, column=1, columnspan=3)
-
-tk.Label(frame, text='height:').grid(row=2, column=0, sticky=tk.W)
-set_height = tk.Scale(frame, from_=10, to=100, length=300, tickinterval=10, orient=tk.HORIZONTAL)
-set_height.grid(row=2, column=1, columnspan=3)
-
-tk.Label(frame, text='parameters:').grid(row=3, column=0, sticky=tk.W)
-
-AllRules = tk.IntVar()
-AllRules.set(0)
-tk.Checkbutton(frame, text='AllRules', variable=AllRules).grid(row=3, column=1, pady=30)
-
-PeriodicInput = tk.IntVar()
-PeriodicInput.set(0)
-tk.Checkbutton(frame, text='PeriodicInput', variable=PeriodicInput).grid(row=3, column=2, pady=30)
-
-PeriodicOutput = tk.IntVar()
-PeriodicOutput.set(0)
-tk.Checkbutton(frame, text='PeriodicOutput', variable=PeriodicOutput).grid(row=3, column=3, pady=30)
-
-surveil = tk.IntVar()
-surveil.set(1)
-tk.Checkbutton(frame, text='surveil', variable=surveil).grid(row=3, column=4, pady=30)
-
-Rotation = tk.IntVar()
-Rotation.set(0)
-tk.Checkbutton(frame, text='Rotation', variable=Rotation).grid(row=4, column=1, pady=0)
-
-Reflection = tk.IntVar()
-Reflection.set(0)
-tk.Checkbutton(frame, text='Reflection', variable=Reflection).grid(row=4, column=2, pady=0)
-
-
-path = tk.StringVar()
-path.set('')
-
-def get_image():
-    path.set(tkinter.filedialog.askopenfilename())
-    return True
-
-
-
-
-def main():
-    options = {
-        'AllRules': AllRules.get(),
-        'surveil': surveil.get(),
-        'PeriodicInput': PeriodicInput.get(),
-        'PeriodicOutput': PeriodicOutput.get(),
-        'Rotation':Rotation.get(),
-        'Reflection': Reflection.get()
-    }
-    ImageProcessor(path.get(), (set_height.get(), set_width.get()), N=set_N.get(), options=options)
-
-tk.Button(frame, text="open file", command=get_image).grid(row=5, column=1)
-tk.Button(frame, text="begin", command=main).grid(row=5, column=2)
-tk.Button(frame, text='exit', command=root.quit()).grid(row=5, column=3)
-
-tk.mainloop()
