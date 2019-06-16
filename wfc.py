@@ -14,6 +14,7 @@ from tkinter.filedialog import *
 
 import matplotlib.pyplot as plt
 
+
 class Lattice():
     """Lattice object which contains its state space and Shannon entropy."""
 
@@ -281,6 +282,7 @@ def mean_pixel(wave, position, i, j):
 #         image.save('result\\' + str(count) + '.png')
 #         count += 1
 
+
 def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, surveil=False):
     entry = image2matrix(image_path)
 
@@ -293,20 +295,20 @@ def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, survei
         return matrix
 
     w = WaveFunction(size, entry, N=N, AllRules=AllRules)
-    fig = plt.figure(figsize = (8,8))
-    matrix = np.array([[mean_pixel(w, (0, 0), 0, 0)]*size[0] for _ in range(size[1])])
+    fig = plt.figure(figsize=(8, 8))
+    matrix = np.array([[mean_pixel(w, (0, 0), 0, 0)] * size[0] for _ in range(size[1])])
     print(list(matrix))
     im = plt.imshow(matrix)
-    plt.pause(0.001)
+    # plt.pause(0.001)
 
     for changed in w.observe(surveil):
         for pos in changed:
             matrix = update(matrix, pos, w, N)
         im.set_array(matrix)
         fig.canvas.draw()
-        plt.pause(0.001)
+        # plt.pause(0.001)
     plt.show()
-    
+
     # count = 0
     # image = Im.new('RGB', size, mean_pixel(w, (0, 0), 0, 0))
     # img = image.load()
@@ -322,56 +324,63 @@ root.title("WaveFunctionCollapse")
 root.geometry("600x400")
 
 frame = Frame(root)
-frame.pack(padx = 10, pady = 10)
+frame.pack(padx=10, pady=10)
 
-Label(frame, text = 'N:').grid(row = 0, column = 0, sticky = W)
-set_N = Scale(frame, from_ = 1, to = 4, length = 100, tickinterval = 1, orient = HORIZONTAL)
-set_N.grid(row = 0, column = 1, sticky = W, columnspan = 3 )
+Label(frame, text='N:').grid(row=0, column=0, sticky=W)
+set_N = Scale(frame, from_=1, to=4, length=100, tickinterval=1, orient=HORIZONTAL)
+set_N.grid(row=0, column=1, sticky=W, columnspan=3)
 
-Label(frame, text = 'width:').grid(row = 1, column = 0, sticky = W)
-set_width = Scale(frame, from_ = 10, to = 100, length = 300, tickinterval = 10, orient = HORIZONTAL)
-set_width.grid(row = 1, column = 1, columnspan = 3)
+Label(frame, text='width:').grid(row=1, column=0, sticky=W)
+set_width = Scale(frame, from_=10, to=100, length=300, tickinterval=10, orient=HORIZONTAL)
+set_width.grid(row=1, column=1, columnspan=3)
 
-Label(frame, text = 'height:').grid(row = 2, column = 0, sticky = W)
-set_height = Scale(frame, from_ = 10, to = 100, length = 300, tickinterval = 10, orient = HORIZONTAL)
-set_height.grid(row = 2, column = 1, columnspan = 3)
+Label(frame, text='height:').grid(row=2, column=0, sticky=W)
+set_height = Scale(frame, from_=10, to=100, length=300, tickinterval=10, orient=HORIZONTAL)
+set_height.grid(row=2, column=1, columnspan=3)
 
-Label(frame, text = 'parameters:').grid(row = 3, column = 0, sticky = W)
+Label(frame, text='parameters:').grid(row=3, column=0, sticky=W)
 
-AL = LabelFrame(frame, text = "AllRules")
-AL.grid(row = 3, column = 1, pady = 30)
+AL = LabelFrame(frame, text="AllRules")
+AL.grid(row=3, column=1, pady=30)
 AllRules = BooleanVar()
 AllRules.set(False)
-Radiobutton(AL, text ='False', variable = AllRules, value = False).pack() 
-Radiobutton(AL, text ='True', variable = AllRules, value = True).pack()
+Radiobutton(AL, text='False', variable=AllRules, value=False).pack()
+Radiobutton(AL, text='True', variable=AllRules, value=True).pack()
 
-PL = LabelFrame(frame, text = "Periodic")
-PL.grid(row = 3, column = 2, pady = 30)
+PL = LabelFrame(frame, text="Periodic")
+PL.grid(row=3, column=2, pady=30)
 Periodic = BooleanVar()
 Periodic.set(False)
-Radiobutton(PL, text ='False', variable = Periodic, value = False).pack() 
-Radiobutton(PL, text ='True', variable = Periodic, value = True).pack()
+Radiobutton(PL, text='False', variable=Periodic, value=False).pack()
+Radiobutton(PL, text='True', variable=Periodic, value=True).pack()
 
-SL = LabelFrame(frame, text = "Surveil")
-SL.grid(row = 3, column = 3, pady = 30)
+SL = LabelFrame(frame, text="Surveil")
+SL.grid(row=3, column=3, pady=30)
 surveil = BooleanVar()
 surveil.set(False)
-Radiobutton(SL, text ='False', variable = surveil, value = False).pack() 
-Radiobutton(SL, text ='True', variable = surveil, value = True).pack()
+Radiobutton(SL, text='False', variable=surveil, value=False).pack()
+Radiobutton(SL, text='True', variable=surveil, value=True).pack()
 
 path = StringVar()
 path.set('')
+
+
 def get_image():
     path.set(askopenfilename())
     return True
+
+
 # im= im.resize((400,400),Im.ANTIALIAS)
 # # im.show()
 def main():
-    ImageProcessor(path.get(), (set_width.get(), set_height.get()), N=set_N.get(),
-         AllRules=AllRules.get(), surveil=surveil.get(), Periodic=Periodic.get())
-    
+    ImageProcessor(path.get(), (set_width.get(), set_height.get()),
+                   N=set_N.get(),
+                   AllRules=AllRules.get(),
+                   surveil=surveil.get(),
+                   Periodic=Periodic.get())
 
-Button(frame, text = "open file",command = get_image).grid(row = 4, column = 1) 
-Button(frame, text = "begin", command = main).grid(row = 4, column = 2)
+
+Button(frame, text="open file", command=get_image).grid(row=4, column=1)
+Button(frame, text="begin", command=main).grid(row=4, column=2)
 
 mainloop()
