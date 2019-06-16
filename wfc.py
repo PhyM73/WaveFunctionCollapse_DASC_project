@@ -52,10 +52,20 @@ class WaveFunction():
      
     """
 
-    def __init__(self, size, entry, N=3, AllRules=False, PeriodicInput=False, PeriodicOutput=False, symmetry=False):
+    def __init__(self,
+                 size,
+                 entry,
+                 N=3,
+                 *,
+                 surveil=True,
+                 AllRules=False,
+                 Rotation=False,
+                 Reflection=False,
+                 PeriodicInput=False,
+                 PeriodicOutput=False):
         # 初始化patterns
         self.N = N
-        self.options = {'PeriIpt': PeriodicInput, 'PeriOpt': PeriodicOutput}
+        self.options = {'PeriIpt': PeriodicInput, 'PeriOpt': PeriodicOutput, 'Rot': Rotation, 'Ref': Reflection}
         self.patterns, self.weights, self.rules = {}, [], []
         self.BuildPatterns(entry)
         self.patterns = {index: pattern for pattern, index in self.patterns.items()}
@@ -71,34 +81,54 @@ class WaveFunction():
         state_space = {state: self.weights[state] for state in self.patterns.keys()}
         self.wave = [[Knot(state_space.copy()) for i in range(self.size[1])] for j in range(self.size[0])]
 
+    @staticmethod
+    def symmetry(m, reflect, rotate):
+
+        def LR_reflect(m):
+            return tuple(reversed(m))
+
+        def UD_reflect(m):
+            return tuple(reversed(m[x][:]) for x in range(len(m)))
+
+        operand = {m}
+        if reflect:
+            operand = operand | {LR_reflect(m), UD_reflect(m), LR_reflect(UD_reflect(m))}
+        if rotate:
+            m1 = tuple(tuple(m[y][x] for y in range(m[0])) for x in range(m))
+            operand = operand | {LR_reflect(m1), UD_reflect(m1), LR_reflect(UD_reflect(m1))}
+
+        return operand
+
     def BuildPatterns(self, entry):
         """Parses the `entry` matrix. Extracts patterns, weights and adjacent rules. """
         N = self.N
-        print(self.options)
-        if self.options['PeriIpt']:
-            width, height = len(entry) - 1, len(entry[0]) - 1
-            entry = [entry[x][:] + entry[x][:N - 1] for x in range(len(entry))]
-            entry = entry[:] + entry[:N - 1]
-        else:
-            width, height = len(entry) - N + 1, len(entry[0]) - N + 1
-        matrix = [[None] * height for _ in range(width)]
-        index = 0
-        for x in range(width):
-            for y in range(height):
-                # Extract an N*N matrix as a pattern with the upper left corner being (x, y).
-                pat = tuple(tuple(entry[x1][y:y + N]) for x1 in range(x, x + N))
+        for ent in WaveFunction.symmetry(entry, self.options['Ref'], self.options['Rot']):
+            index = len(self.patterns)
 
-                # If this pattern already exists, simply increment its weight. Otherwise, records
-                # the new pattern and initializes its weight as 1, then increment the pattern index.
-                try:
-                    matrix[x][y] = self.patterns[pat]
-                    self.weights[matrix[x][y]] += 1
-                except KeyError:
-                    self.patterns[pat] = matrix[x][y] = index
-                    self.weights.append(1)
-                    self.rules.append([set() for _ in range(4)])
-                    index += 1
-                self.make_rule((x, y), matrix)
+            if self.options['PeriIpt']:
+                width, height = len(ent) - 1, len(ent[0]) - 1
+                ent = [ent[x][:] + ent[x][:N - 1] for x in range(len(ent))]
+                ent = ent[:] + ent[:N - 1]
+            else:
+                width, height = len(ent) - N + 1, len(ent[0]) - N + 1
+
+            matrix = [[None] * height for _ in range(width)]
+            for x in range(width):
+                for y in range(height):
+                    # Extract an N*N matrix as a pattern with the upper left corner being (x, y).
+                    pat = tuple(tuple(ent[x1][y:y + N]) for x1 in range(x, x + N))
+
+                    # If this pattern already exists, simply increment its weight. Otherwise, records
+                    # the new pattern and initializes its weight as 1, then increment the pattern index.
+                    try:
+                        matrix[x][y] = self.patterns[pat]
+                        self.weights[matrix[x][y]] += 1
+                    except KeyError:
+                        self.patterns[pat] = matrix[x][y] = index
+                        self.weights.append(1)
+                        self.rules.append([set() for _ in range(4)])
+                        index += 1
+                    self.make_rule((x, y), matrix)
 
     def make_rule(self, position, matrix):
         """为position处的pattern及其左侧、上侧的pattern创建邻近规则"""
@@ -249,7 +279,7 @@ class WaveFunction():
 def image2matrix(image_path):
     """Convert image at `image_path` to matrix."""
     im = matplotlib.image.imread(image_path)
-    im = [[tuple(im[x][y]) for y in range(im.shape[1])] for x in range(im.shape[0])]
+    im = tuple(tuple(tuple(im[x][y]) for y in range(im.shape[1])) for x in range(im.shape[0]))
     return im
 
 
@@ -260,14 +290,14 @@ def mean_pixel(wave, position, i, j):
         map(lambda x: np.average(np.array(x), weights=values), zip(*(wave.patterns[index][i][j] for index in keys))))
 
 
-def ImageProcessor(image_path,
-                   size,
-                   N=3,
-                   AllRules=False,
-                   PeriodicInput=False,
-                   surveil=True,
-                   PeriodicOutput=False,
-                   Save=True):
+def ImageProcessor(image_path, size, N, options):
+    #    AllRules=False,
+    #    PeriodicInput=False,
+    #    surveil=True,
+    #    PeriodicOutput=False,
+    #    Save=True,
+    #    Reflection=False,
+    #    Rotation=False,):
     entry = image2matrix(image_path)
 
     def update(matrix, position, w, N):
@@ -279,7 +309,8 @@ def ImageProcessor(image_path,
                 matrix[position[0] + i, position[1] + j] = mean_pixel(w, position, i, j)
         return matrix
 
-    w = WaveFunction(size, entry, N=N, AllRules=AllRules)
+    # w = WaveFunction(size, entry, N=N, AllRules=AllRules, Rotation=Rotation, Reflection=Reflection)
+    w = WaveFunction(size, entry, N=N, **options)
     fig = plt.figure(figsize=(8, 8))
     matrix = np.array([[mean_pixel(w, (0, 0), 0, 0)] * size[1] for _ in range(size[0])])
     im = plt.imshow(matrix)
@@ -293,7 +324,7 @@ def ImageProcessor(image_path,
         im.set_array(matrix)
         fig.canvas.draw()
         plt.pause(0.0001)
-    if Save: fig.savefig('result\\final.png', dpi=300, format='png')
+    # if Save: fig.savefig('result\\final.png', dpi=300, format='png')
     # top = Toplevel()
     # top.title("message")
     # msg = Message( top, text = "Done")
@@ -368,14 +399,23 @@ def get_image():
     return True
 
 
+options = {
+    'AllRules': AllRules.get(),
+    'surveil': surveil.get(),
+    'PeriodicInput': PeriodicInput.get(),
+    'PeriodicOutput': PeriodicOutput.get()
+}
+
+
 def main():
-    ImageProcessor(path.get(), (set_height.get(), set_width.get()),
-                   N=set_N.get(),
-                   AllRules=AllRules.get(),
-                   surveil=surveil.get(),
-                   PeriodicInput=PeriodicInput.get(),
-                   Save=save.get(),
-                   PeriodicOutput=PeriodicOutput.get())
+    ImageProcessor(path.get(), (set_height.get(), set_width.get()), N=set_N.get(), options=options)
+    # ImageProcessor(path.get(), (set_height.get(), set_width.get()),
+    #                N=set_N.get(),
+    #                AllRules=AllRules.get(),
+    #                surveil=surveil.get(),
+    #                PeriodicInput=PeriodicInput.get(),
+    #                Save=save.get(),
+    #                PeriodicOutput=PeriodicOutput.get())
 
 
 tk.Button(frame, text="open file", command=get_image).grid(row=4, column=1)
