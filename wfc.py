@@ -234,7 +234,7 @@ class WaveFunction():
                             return self.backtrack()
 
                         elif self.Stack and (nb not in self.Stack[-1].keys()):
-                            # push this changed Knot into the Stack.
+                            # Push this changed Knot into the Stack.
                             self.Stack[-1][nb] = self[nb].space.copy()
                         self[nb] = Knot({state: self.weights[state] for state in available})
                         PropagStack.append(nb)
@@ -247,7 +247,7 @@ class WaveFunction():
         print('0')
         if len(self.Stack):
             step = self.Stack.pop()
-            # Restore all the Girds affected by the last collapse
+            # Restore all the Knot affected by the last collapse.
             for (position, space) in step.items():
                 self[position] = Knot(space)
                 self.wait_to_collapse.add(position)
@@ -267,3 +267,40 @@ class WaveFunction():
                 yield [(x, y) for x in range(self.size[0]) for y in range(self.size[1])]
         except CollapseError:
             raise CollapseError
+
+if __name__ == "__main__":
+    def MatrixProcessor(entry, size, N, options):
+        def update(matrix, position, w, N):
+            limit_i = N if position[0] == w.size[0] - 1 else 1
+            limit_j = N if position[1] == w.size[1] - 1 else 1
+            for i in range(limit_i):
+                for j in range(limit_j):
+                    matrix[position[0] + i][position[1] + j] = w.patterns[list(w[position].space.keys())[0]][i][j]
+            return matrix
+
+        w = WaveFunction(size, entry, N=N, **options)
+        matrix = [[None] * size[0] for _ in range(size[1])]
+
+        for changed in w.observe(w.options['surv']):
+            for pos in changed:
+                matrix = update(matrix, pos, w, N)
+        for eachline in matrix:
+            print(eachline)
+
+    #'L' = land, 'C' = coast, 'S' = sea
+    entry = (
+        ('L', 'L', 'L', 'L', 'L', 'L', 'L'),
+        ('L', 'L', 'C', 'L', 'L', 'L', 'L'),
+        ('C', 'C', 'S', 'C', 'C', 'L', 'L'),
+        ('S', 'S', 'S', 'S', 'S', 'C', 'L'),
+        ('S', 'S', 'S', 'S', 'S', 'S', 'C')
+    )
+    options = {        
+        'AllRules':0,
+        'surveil':0,
+        'PeriodicInput':0,
+        'PeriodicOutput':0,
+        'Rotation':0,
+        'Reflection':0
+    }
+    MatrixProcessor(entry, (10,10),N=2,options=options)
