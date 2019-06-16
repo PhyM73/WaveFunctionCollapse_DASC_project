@@ -1,20 +1,19 @@
 import math
 import random
-try:
-    import Image
-except:
-    from PIL import Image
 import numpy as np
 
-#import matplotlib.pyplot as plt
+import tkinter as tk
+import matplotlib.pyplot as plt
+import matplotlib
+import tkinter.filedialog
 
 
-class Grid():
-    """Grid object which contains its state space and Shannon entropy."""
+class Knot():
+    """Knot object which contains its state space and Shannon entropy."""
 
     def __init__(self, state_space):
         self.space = state_space  # state_space = {state:weight}
-        self.entropy = Grid.shannon(state_space)
+        self.entropy = Knot.shannon(state_space)
 
     @staticmethod
     def shannon(state_space):
@@ -45,7 +44,7 @@ class WaveFunction():
     然后按照WFC算法对波函数进行观测。   
 
     Attributes：
-        wave: A 2-D matrix which contains all the Grids.
+        wave: A 2-D matrix which contains all the Knots.
 
         patterns: {i1:p1, i2:p2, ...}     
         weights: [w1, w2, ...]     
@@ -53,12 +52,13 @@ class WaveFunction():
      
     """
 
-    def __init__(self, size, entry, N=3, AllRules=False, Periodic=False):
+    def __init__(self, size, entry, N=3, AllRules=False, PeriodicInput=False, PeriodicOutput=False, symmetry=False):
         # 初始化patterns
+        self.N = N
+        self.options = {'PeriIpt': PeriodicInput, 'PeriOpt': PeriodicOutput}
         self.patterns, self.weights, self.rules = {}, [], []
-        self.BuildPatterns(entry, N=N, Periodic=Periodic)
+        self.BuildPatterns(entry)
         self.patterns = {index: pattern for pattern, index in self.patterns.items()}
-
         if N > 1 and AllRules:
             self.make_all_rules()
 
@@ -66,16 +66,16 @@ class WaveFunction():
         self.wait_to_collapse = set((x, y) for x in range(self.size[0]) for y in range(self.size[1]))
         self.Stack = []
 
-        # Initializes the 2-D WaveFunction matrix, each Grid of the matrix
+        # Initializes the 2-D WaveFunction matrix, each Knot of the matrix
         # starts with all states as possible. No state is forbidden yet.
         state_space = {state: self.weights[state] for state in self.patterns.keys()}
-        self.wave = [[Grid(state_space.copy()) for i in range(self.size[1])] for j in range(self.size[0])]
+        self.wave = [[Knot(state_space.copy()) for i in range(self.size[1])] for j in range(self.size[0])]
 
-        self.N = N
-
-    def BuildPatterns(self, entry, N=3, Periodic=False):
+    def BuildPatterns(self, entry):
         """Parses the `entry` matrix. Extracts patterns, weights and adjacent rules. """
-        if Periodic:
+        N = self.N
+        print(self.options)
+        if self.options['PeriIpt']:
             width, height = len(entry) - 1, len(entry[0]) - 1
             entry = [entry[x][:] + entry[x][1:N - 1] for x in range(len(entry))]
             entry = entry[:] + entry[1:N - 1]
@@ -98,9 +98,9 @@ class WaveFunction():
                     self.weights.append(1)
                     self.rules.append([set() for _ in range(4)])
                     index += 1
-                self.make_rule((x, y), matrix, Periodic)
+                self.make_rule((x, y), matrix)
 
-    def make_rule(self, position, matrix, Periodic):
+    def make_rule(self, position, matrix):
         """为position处的pattern及其左侧、上侧的pattern创建邻近规则"""
         # The order of directions: (-1,0), (1,0), (0,-1), (0,1)
         (x, y) = position
@@ -143,18 +143,28 @@ class WaveFunction():
         self.wave[index[0]][index[1]] = value
 
     def min_entropy_pos(self):
-        """Returns the position of the Grid whose statespace has the lowest entropy."""
+        """Returns the position of the Knot whose statespace has the lowest entropy."""
         min_entropy = float("inf")
-        for lattice in self.wait_to_collapse:
+        for Knot in self.wait_to_collapse:
             noise = random.random() / 1000
             # Add some noise to mix things up a little
-            if self[lattice].entropy - noise < min_entropy:
-                position = lattice[:]
+            if self[Knot].entropy - noise < min_entropy:
+                position = Knot[:]
                 min_entropy = self[position].entropy - noise
         return position
 
     def neighbor(self, position):
-        """Yields neighboring Grids and their directions of a given `position`."""
+        """Yields neighboring Knots and their directions of a given `position`."""
+        if self.options['PeriOpt']:
+            if position[0] == 0:
+                yield (self.size[0] - 1, position[1]), 0
+            elif position[0] == self.size[0] - 1:
+                yield (0, position[1]), 1
+            if position[1] == 0:
+                yield (position[0], self.size[1] - 1), 2
+            elif position[1] == self.size[1] - 1:
+                yield (position[0], 0), 3
+
         if position[0] > 0:
             yield (position[0] - 1, position[1]), 0
         if position[0] < self.size[0] - 1:
@@ -165,24 +175,25 @@ class WaveFunction():
             yield (position[0], position[1] + 1), 3
 
     def collapse(self, position):
-        """Collapses the grid at `position`, and then propagates the consequences. """
+        """Collapses the Knot at `position`, and then propagates the consequences. """
         (x, y) = position
         if len(self[position]) < 1:
             return self.backtrack()
         else:
             if len(self[position]) > 1:
-                # Choose one possible pattern randomly and push this changed Grid into the Stack.
+                # Choose one possible pattern randomly and push this changed Knot into the Stack.
                 states, w = list(self[position].space.keys()), list(self[position].space.values())
                 elem = random.choices(states, weights=w)[0]
                 del self.wave[x][y].space[elem]
                 self.Stack.append({position: self[position].space.copy()})
-                self[x, y] = Grid({elem: 1})
+                self[x, y] = Knot({elem: 1})
             self.wait_to_collapse.remove(position)
             return self.propagate(position)
 
     def propagate(self, position):
-        """Propagates the consequences of the wavefunction collapse or statespace changing at `position`.
-        This method keeps propagating the consequences of the consequences,and so on until no consequences remain. 
+        """Propagates the consequences of the wavefunction collapse or statespace 
+        changing at `position`.This method keeps propagating the consequences of 
+        the consequences,and so on until no consequences remain. 
         """
         PropagStack = [position]
         changed = {position}
@@ -201,7 +212,7 @@ class WaveFunction():
                         elif self.Stack and (nb not in self.Stack[-1].keys()):
                             # Push this changed Grid into the Stack.
                             self.Stack[-1][nb] = self[nb].space.copy()
-                        self[nb] = Grid({state: self.weights[state] for state in available})
+                        self[nb] = Knot({state: self.weights[state] for state in available})
                         PropagStack.append(nb)
                         changed.add(nb)
         return changed
@@ -213,13 +224,13 @@ class WaveFunction():
             step = self.Stack.pop()
             # Restore all the Girds affected by the last collapse.
             for (position, space) in step.items():
-                self[position] = Grid(space)
+                self[position] = Knot(space)
                 self.wait_to_collapse.add(position)
             return set(step.keys())
         else:
             raise CollapseError("No Sulotion")
 
-    def observe(self, surveil=False):
+    def observe(self, surveil):
         '''Observe the whole WaveFunction'''
         if surveil:
             while self.wait_to_collapse:
@@ -232,92 +243,138 @@ class WaveFunction():
 
 def image2matrix(image_path):
     """Convert image at `image_path` to matrix."""
-    image = Image.open(image_path)
-    size = image.size
-    load = image.load()
-    return [[load[x, y] for y in range(size[1])] for x in range(size[0])]
+    im = matplotlib.image.imread(image_path)
+    im = [[tuple(im[x][y]) for y in range(im.shape[1])] for x in range(im.shape[0])]
+    return im
 
 
 def mean_pixel(wave, position, i, j):
+    """Get the weighted mean of the state space of position as the pixel there"""
     keys, values = list(wave[position].space.keys()), np.array(list(wave[position].space.values()))
     # comment
     return tuple(
-        map(lambda x: int(np.average(np.array(x), weights=values)),
-            zip(*(wave.patterns[index][i][j] for index in keys))))
+        map(lambda x: np.average(np.array(x), weights=values), zip(*(wave.patterns[index][i][j] for index in keys))))
 
 
-def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, surveil=False):
+def ImageProcessor(image_path,
+                   size,
+                   N=3,
+                   AllRules=False,
+                   PeriodicInput=False,
+                   surveil=True,
+                   PeriodicOutput=False,
+                   Save=True):
     entry = image2matrix(image_path)
 
-    def update(img, position, w, N):
+    def update(matrix, position, w, N):
         limit_i = N if position[0] == w.size[0] - 1 else 1
         limit_j = N if position[1] == w.size[1] - 1 else 1
+        print(w.size)
         for i in range(limit_i):
             for j in range(limit_j):
-                img[position[0] + i, position[1] + j] = mean_pixel(w, position, i, j)
-        return img
+                matrix[position[0] + i, position[1] + j] = mean_pixel(w, position, i, j)
+        return matrix
 
-    w = WaveFunction(size, entry, N=N, AllRules=AllRules, Periodic=Periodic)
-    count = 0
-    image = Image.new('RGB', size, mean_pixel(w, (0, 0), 0, 0))
-    image.save('result\\' + str(count) + '.png')
-    img = image.load()
-
-    if surveil: count += 1
+    w = WaveFunction(size, entry, N=N, AllRules=AllRules)
+    fig = plt.figure(figsize=(8, 8))
+    matrix = np.array([[mean_pixel(w, (0, 0), 0, 0)] * size[1] for _ in range(size[0])])
+    im = plt.imshow(matrix)
+    plt.axis('off')
+    plt.subplots_adjust(left=0.2, bottom=0.2, right=0.8, top=0.8, hspace=0.2, wspace=0.3)
+    plt.pause(0.0001)
 
     for changed in w.observe(surveil):
         for pos in changed:
-            img = update(img, pos, w, N)
-        image.save('result\\' + str(count) + '.png')
-        count += 1
+            matrix = update(matrix, pos, w, N)
+        im.set_array(matrix)
+        fig.canvas.draw()
+        plt.pause(0.0001)
+    if Save: fig.savefig('result\\final.png', dpi=300, format='png')
+    # top = Toplevel()
+    # top.title("message")
+    # msg = Message( top, text = "Done")
+    # msg.pack()
+    plt.show()
 
 
-# if __name__ == '__main__':
+#################################################3
+# ImageProcessor(r"samples\Cats.png", (50, 50), N=4, surveil=False, Periodic=True)
+root = tk.Tk()
+root.title("WaveFunctionCollapse")
+root.geometry("600x400")
 
-#####################################################################
-ImageProcessor(r"samples\3Bricks.png", (50, 50), N=3, surveil=False, Periodic=True, AllRules=False)
+frame = tk.Frame(root)
+frame.pack(padx=10, pady=10)
 
-# entry = [
-#     # ['S', 'S', 'S', 'C', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-#     ['S', 'S', 'C', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-#     ['C', 'C', 'C', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'C', 'L', 'L'],
-#     ['L', 'L', 'C', 'C', 'L', 'L', 'L', 'C', 'S', 'C', 'L'],
-#     ['L', 'C', 'S', 'S', 'C', 'L', 'L', 'C', 'S', 'C', 'L'],
-#     ['C', 'S', 'S', 'S', 'S', 'C', 'C', 'S', 'S', 'S', 'C'],
-#     ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
-#     ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L', 'L'],
-#     ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
-#     ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C'],
-#     ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C'],
-#     ['L', 'C', 'S', 'S', 'S', 'C', 'S', 'S', 'S', 'C', 'L'],
-#     ['L', 'L', 'C', 'C', 'C', 'L', 'C', 'S', 'C', 'L', 'L'],
-#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'C', 'L', 'L', 'L'],
-#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-#     ['L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'],
-# ]
-# ['C', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'C', 'L'],
+tk.Label(frame, text='N:').grid(row=0, column=0, sticky=tk.W)
+set_N = tk.Scale(frame, from_=1, to=4, length=100, tickinterval=1, orient=tk.HORIZONTAL)
+set_N.grid(row=0, column=1, sticky=tk.W, columnspan=3)
 
-# # 处理图片时调用
-# image1 = Image.new('RGB', (70, 70), (0, 0, 0))
-# result = image1.load()
-# for i in range(w.size[0]):
-#     for j in range(w.size[1]):
-#         result[i, j] = w.patterns[list(w[i, j].space.keys())[0]][0][0]
-# image1.save('emmmm.png')
-# image1.show()
-# 处理图片时调用
+tk.Label(frame, text='width:').grid(row=1, column=0, sticky=tk.W)
+set_width = tk.Scale(frame, from_=10, to=100, length=300, tickinterval=10, orient=tk.HORIZONTAL)
+set_width.grid(row=1, column=1, columnspan=3)
 
-#处理矩阵时调用
-# result = [[None] * w.size[1] for _ in range(w.size[0])]
-# for i in range(w.size[0]):
-#     for j in range(w.size[1]):
-#         result[i][j] = w.patterns[list(w.wave[i][j].space.keys())[0]][0][0]
-# for line in result:
-#     for i in line:
-#         print(i, end='')
-#     print('')
+tk.Label(frame, text='height:').grid(row=2, column=0, sticky=tk.W)
+set_height = tk.Scale(frame, from_=10, to=100, length=300, tickinterval=10, orient=tk.HORIZONTAL)
+set_height.grid(row=2, column=1, columnspan=3)
+
+tk.Label(frame, text='parameters:').grid(row=3, column=0, sticky=tk.W)
+
+AL = tk.LabelFrame(frame, text="AllRules")
+AL.grid(row=3, column=1, pady=30)
+AllRules = tk.BooleanVar()
+AllRules.set(False)
+tk.Radiobutton(AL, text='False', variable=AllRules, value=False).pack()
+tk.Radiobutton(AL, text='True', variable=AllRules, value=True).pack()
+
+PL = tk.LabelFrame(frame, text="PeriodicInput")
+PL.grid(row=3, column=2, pady=30)
+PeriodicInput = tk.BooleanVar()
+PeriodicInput.set(False)
+tk.Radiobutton(PL, text='False', variable=PeriodicInput, value=False).pack()
+tk.Radiobutton(PL, text='True', variable=PeriodicInput, value=True).pack()
+
+PL = tk.LabelFrame(frame, text="PeriodicOutput")
+PL.grid(row=3, column=5, pady=30)
+PeriodicOutput = tk.BooleanVar()
+PeriodicOutput.set(False)
+tk.Radiobutton(PL, text='False', variable=PeriodicOutput, value=False).pack()
+tk.Radiobutton(PL, text='True', variable=PeriodicOutput, value=True).pack()
+
+SL = tk.LabelFrame(frame, text="Surveil")
+SL.grid(row=3, column=3, pady=30)
+surveil = tk.BooleanVar()
+surveil.set(True)
+tk.Radiobutton(SL, text='False', variable=surveil, value=False).pack()
+tk.Radiobutton(SL, text='True', variable=surveil, value=True).pack()
+
+SaveL = tk.LabelFrame(frame, text="Save")
+SaveL.grid(row=3, column=4, pady=30)
+save = tk.BooleanVar()
+save.set(True)
+tk.Radiobutton(SaveL, text='False', variable=save, value=False).pack()
+tk.Radiobutton(SaveL, text='True', variable=save, value=True).pack()
+
+path = tk.StringVar()
+path.set('')
+
+
+def get_image():
+    path.set(tkinter.filedialog.askopenfilename())
+    return True
+
+
+def main():
+    ImageProcessor(path.get(), (set_height.get(), set_width.get()),
+                   N=set_N.get(),
+                   AllRules=AllRules.get(),
+                   surveil=surveil.get(),
+                   PeriodicInput=PeriodicInput.get(),
+                   Save=save.get(),
+                   PeriodicOutput=PeriodicOutput.get())
+
+
+tk.Button(frame, text="open file", command=get_image).grid(row=4, column=1)
+tk.Button(frame, text="begin", command=main).grid(row=4, column=2)
+
+tk.mainloop()
