@@ -279,8 +279,8 @@ class WaveFunction():
 def image2matrix(image_path):
     """Convert image at `image_path` to matrix."""
     im = matplotlib.image.imread(image_path)
-    im = tuple(tuple(tuple(im[x][y]) for y in range(im.shape[1])) for x in range(im.shape[0]))
-    return im
+    img = tuple(tuple(tuple(im[x][y]) for y in range(im.shape[1])) for x in range(im.shape[0]))
+    return img
 
 
 def mean_pixel(wave, position, i, j):
@@ -303,7 +303,6 @@ def ImageProcessor(image_path, size, N, options):
     def update(matrix, position, w, N):
         limit_i = N if position[0] == w.size[0] - 1 else 1
         limit_j = N if position[1] == w.size[1] - 1 else 1
-        print(w.size)
         for i in range(limit_i):
             for j in range(limit_j):
                 matrix[position[0] + i, position[1] + j] = mean_pixel(w, position, i, j)
