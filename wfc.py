@@ -1,19 +1,11 @@
 import math
 import random
-# import imageio
-# import glob
-# import re
-# try:
-#     import Image as Im
-# except:
-#     from PIL import Image as Im
 import numpy as np
 
-from tkinter import *
-from tkinter.filedialog import *
-
+import tkinter as tk
 import matplotlib.pyplot as plt
 import matplotlib
+import tkinter.filedialog
 
 class Lattice():
     """Lattice object which contains its state space and Shannon entropy."""
@@ -244,9 +236,8 @@ class WaveFunction():
 
 def image2matrix(image_path):
     """Convert image at `image_path` to matrix."""
-    im = matplotlib.image.imread('完成\samples\Angular.png')
+    im = matplotlib.image.imread(image_path)
     im=[[tuple(im[x][y])for y in range(im.shape[1])] for x in range(im.shape[0])]
-    
     return im
 
 
@@ -254,59 +245,40 @@ def mean_pixel(wave, position, i, j):
     """"Get the weighted mean of the state space of position as the pixel there"""
     keys, values = list(wave[position].space.keys()), np.array(list(wave[position].space.values()))
     return tuple(
-        map(lambda x: int(np.average(np.array(x), weights=values)),
+        map(lambda x: np.average(np.array(x), weights=values),
             zip(*(wave.patterns[index][i][j] for index in keys))))
 
-
-# def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, surveil=False):
-#     entry = image2matrix(image_path)
-
-#     def update(img, position, w, N):
-#         limit_i = N if position[0] == w.size[0] - 1 else 1
-#         limit_j = N if position[1] == w.size[1] - 1 else 1
-#         for i in range(limit_i):
-#             for j in range(limit_j):
-#                 img[position[0] + i, position[1] + j] = mean_pixel(w, position, i, j)
-#         return img
-
-#     w = WaveFunction(size, entry, N=N, AllRules=AllRules, Periodic=Periodic)
-#     count = 0
-#     image = Im.new('RGB', size, mean_pixel(w, (0, 0), 0, 0))
-#     img = image.load()
-#     image.save('result\\' + str(count) + '.png')
-
-#     if surveil: count += 1
-
-#     for changed in w.observe(surveil):
-#         for pos in changed:
-#             img = update(img, pos, w, N)
-#         image.save('result\\' + str(count) + '.png')
-#         count += 1
-
-def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, surveil=False):
+def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, surveil=True, Save=True):
     entry = image2matrix(image_path)
 
     def update(matrix, position, w, N):
         limit_i = N if position[0] == w.size[0] - 1 else 1
         limit_j = N if position[1] == w.size[1] - 1 else 1
+        print(w.size)
         for i in range(limit_i):
             for j in range(limit_j):
                 matrix[position[0] + i, position[1] + j] = mean_pixel(w, position, i, j)
         return matrix
 
-    w = WaveFunction(size, entry, N=N, AllRules=AllRules)
+    w = WaveFunction((size[0],size[1]), entry, N=N, AllRules=AllRules)
     fig = plt.figure(figsize = (8,8))
-    matrix = np.array([[mean_pixel(w, (0, 0), 0, 0)]*size[0] for _ in range(size[1])])
-    print(list(matrix))
+    matrix = np.array([[mean_pixel(w, (0, 0), 0, 0)]*size[1] for _ in range(size[0])])
     im = plt.imshow(matrix)
-    # plt.pause(0.001)
+    plt.axis('off')
+    plt.subplots_adjust(left=0.2, bottom=0.2, right=0.8, top=0.8,hspace=0.2, wspace=0.3)
+    plt.pause(0.001)
 
     for changed in w.observe(surveil):
         for pos in changed:
             matrix = update(matrix, pos, w, N)
         im.set_array(matrix)
         fig.canvas.draw()
-        # plt.pause(0.001)
+        plt.pause(0.001)
+    if Save: fig.savefig('result\\final.png', dpi=300, format='png')
+    # top = Toplevel()
+    # top.title("message")
+    # msg = Message( top, text = "Done")
+    # msg.pack()
     plt.show()
     
     # count = 0
@@ -319,61 +291,67 @@ def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, survei
 
 #################################################3
 # ImageProcessor(r"samples\Cats.png", (50, 50), N=4, surveil=False, Periodic=True)
-root = Tk()
+root = tk.Tk()
 root.title("WaveFunctionCollapse")
 root.geometry("600x400")
 
-frame = Frame(root)
+frame = tk.Frame(root)
 frame.pack(padx = 10, pady = 10)
 
-Label(frame, text = 'N:').grid(row = 0, column = 0, sticky = W)
-set_N = Scale(frame, from_ = 1, to = 4, length = 100, tickinterval = 1, orient = HORIZONTAL)
-set_N.grid(row = 0, column = 1, sticky = W, columnspan = 3 )
+tk.Label(frame, text = 'N:').grid(row = 0, column = 0, sticky = tk.W)
+set_N = tk.Scale(frame, from_ = 1, to = 4, length = 100, tickinterval = 1, orient = tk.HORIZONTAL)
+set_N.grid(row = 0, column = 1, sticky = tk.W, columnspan = 3 )
 
-Label(frame, text = 'width:').grid(row = 1, column = 0, sticky = W)
-set_width = Scale(frame, from_ = 10, to = 100, length = 300, tickinterval = 10, orient = HORIZONTAL)
+tk.Label(frame, text = 'width:').grid(row = 1, column = 0, sticky = tk.W)
+set_width = tk.Scale(frame, from_ = 10, to = 100, length = 300, tickinterval = 10, orient = tk.HORIZONTAL)
 set_width.grid(row = 1, column = 1, columnspan = 3)
 
-Label(frame, text = 'height:').grid(row = 2, column = 0, sticky = W)
-set_height = Scale(frame, from_ = 10, to = 100, length = 300, tickinterval = 10, orient = HORIZONTAL)
+tk.Label(frame, text = 'height:').grid(row = 2, column = 0, sticky = tk.W)
+set_height = tk.Scale(frame, from_ = 10, to = 100, length = 300, tickinterval = 10, orient = tk.HORIZONTAL)
 set_height.grid(row = 2, column = 1, columnspan = 3)
 
-Label(frame, text = 'parameters:').grid(row = 3, column = 0, sticky = W)
+tk.Label(frame, text = 'parameters:').grid(row = 3, column = 0, sticky = tk.W)
 
-AL = LabelFrame(frame, text = "AllRules")
+AL = tk.LabelFrame(frame, text = "AllRules")
 AL.grid(row = 3, column = 1, pady = 30)
-AllRules = BooleanVar()
+AllRules = tk.BooleanVar()
 AllRules.set(False)
-Radiobutton(AL, text ='False', variable = AllRules, value = False).pack() 
-Radiobutton(AL, text ='True', variable = AllRules, value = True).pack()
+tk.Radiobutton(AL, text ='False', variable = AllRules, value = False).pack() 
+tk.Radiobutton(AL, text ='True', variable = AllRules, value = True).pack()
 
-PL = LabelFrame(frame, text = "Periodic")
+PL = tk.LabelFrame(frame, text = "Periodic")
 PL.grid(row = 3, column = 2, pady = 30)
-Periodic = BooleanVar()
+Periodic = tk.BooleanVar()
 Periodic.set(False)
-Radiobutton(PL, text ='False', variable = Periodic, value = False).pack() 
-Radiobutton(PL, text ='True', variable = Periodic, value = True).pack()
+tk.Radiobutton(PL, text ='False', variable = Periodic, value = False).pack() 
+tk.Radiobutton(PL, text ='True', variable = Periodic, value = True).pack()
 
-SL = LabelFrame(frame, text = "Surveil")
+SL = tk.LabelFrame(frame, text = "Surveil")
 SL.grid(row = 3, column = 3, pady = 30)
-surveil = BooleanVar()
-surveil.set(False)
-Radiobutton(SL, text ='False', variable = surveil, value = False).pack() 
-Radiobutton(SL, text ='True', variable = surveil, value = True).pack()
+surveil = tk.BooleanVar()
+surveil.set(True)
+tk.Radiobutton(SL, text ='False', variable = surveil, value = False).pack() 
+tk.Radiobutton(SL, text ='True', variable = surveil, value = True).pack()
 
-path = StringVar()
+SaveL = tk.LabelFrame(frame, text = "Save")
+SaveL.grid(row = 3, column = 4, pady = 30)
+save = tk.BooleanVar()
+save.set(True)
+tk.Radiobutton(SaveL, text ='False', variable = save, value = False).pack() 
+tk.Radiobutton(SaveL, text ='True', variable = save, value = True).pack()
+
+path = tk.StringVar()
 path.set('')
 def get_image():
-    path.set(askopenfilename())
+    path.set(tkinter.filedialog.askopenfilename())
     return True
-# im= im.resize((400,400),Im.ANTIALIAS)
-# # im.show()
+
 def main():
-    ImageProcessor(path.get(), (set_width.get(), set_height.get()), N=set_N.get(),
+    print("1")
+    ImageProcessor(path.get(), (set_height.get(),set_width.get()), N=set_N.get(),
          AllRules=AllRules.get(), surveil=surveil.get(), Periodic=Periodic.get())
-    
 
-Button(frame, text = "open file",command = get_image).grid(row = 4, column = 1) 
-Button(frame, text = "begin", command = main).grid(row = 4, column = 2)
+tk.Button(frame, text = "open file",command = get_image).grid(row = 4, column = 1) 
+tk.Button(frame, text = "begin", command = main).grid(row = 4, column = 2)
 
-mainloop()
+tk.mainloop()
