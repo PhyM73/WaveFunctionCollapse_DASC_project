@@ -16,12 +16,12 @@ import matplotlib.pyplot as plt
 import matplotlib
 
 
-class Lattice():
-    """Lattice object which contains its state space and Shannon entropy."""
+class Knot():
+    """Knot object which contains its state space and Shannon entropy."""
 
     def __init__(self, state_space):
         self.space = state_space  # state_space = {state:weight}
-        self.entropy = Lattice.shannon(state_space)
+        self.entropy = Knot.shannon(state_space)
 
     @staticmethod
     def shannon(state_space):
@@ -52,7 +52,7 @@ class WaveFunction():
     然后按照WFC算法对波函数进行观测。   
 
     Attributes：
-        wave: A 2-D matrix which contains all the Lattices.
+        wave: A 2-D matrix which contains all the Knots.
 
         patterns: {i1:p1, i2:p2, ...}     
         weights: [w1, w2, ...]     
@@ -60,12 +60,13 @@ class WaveFunction():
      
     """
 
-    def __init__(self, size, entry, N=3, AllRules=False, Periodic=False):
+    def __init__(self, size, entry, N=3, AllRules=False, PeriodicInput=False, PeriodicOutput=False, symmetry=False):
         # 初始化patterns
+        self.N = N
+        self.options = {'PeriIpt': PeriodicInput, 'PeriOpt': PeriodicOutput}
         self.patterns, self.weights, self.rules = {}, [], []
-        self.BuildPatterns(entry, N=N, Periodic=Periodic)
+        self.BuildPatterns(entry)
         self.patterns = {index: pattern for pattern, index in self.patterns.items()}
-
         if N > 1 and AllRules:
             self.make_all_rules()
 
@@ -73,16 +74,16 @@ class WaveFunction():
         self.wait_to_collapse = set((x, y) for x in range(self.size[0]) for y in range(self.size[1]))
         self.Stack = []
 
-        # Initializes the 2-D WaveFunction matrix, each Lattice of the matrix
+        # Initializes the 2-D WaveFunction matrix, each Knot of the matrix
         # starts with all states as possible. No state is forbidden yet.
         state_space = {state: self.weights[state] for state in self.patterns.keys()}
-        self.wave = [[Lattice(state_space.copy()) for i in range(self.size[1])] for j in range(self.size[0])]
+        self.wave = [[Knot(state_space.copy()) for i in range(self.size[1])] for j in range(self.size[0])]
 
-        self.N = N
-
-    def BuildPatterns(self, entry, N=3, Periodic=False):
+    def BuildPatterns(self, entry):
         """Parses the `entry` matrix. Extracts patterns, weights and adjacent rules. """
-        if Periodic:
+        N = self.N
+        print(self.options)
+        if self.options['PeriIpt']:
             width, height = len(entry) - 1, len(entry[0]) - 1
             entry = [entry[x][:] + entry[x][:N - 1] for x in range(len(entry))]
             entry = entry[:] + entry[:N - 1]
@@ -93,7 +94,6 @@ class WaveFunction():
         for x in range(width):
             for y in range(height):
                 # Extract an N*N matrix as a pattern with the upper left corner being (x, y).
-                # print(type(entry[0][0]))
                 pat = tuple(tuple(entry[x1][y:y + N]) for x1 in range(x, x + N))
 
                 # If this pattern already exists, simply increment its weight. Otherwise, records
@@ -106,9 +106,9 @@ class WaveFunction():
                     self.weights.append(1)
                     self.rules.append([set() for _ in range(4)])
                     index += 1
-                self.make_rule((x, y), matrix, Periodic)
+                self.make_rule((x, y), matrix)
 
-    def make_rule(self, position, matrix, Periodic):
+    def make_rule(self, position, matrix):
         """为position处的pattern及其左侧、上侧的pattern创建邻近规则"""
         # The order of directions: (-1,0), (1,0), (0,-1), (0,1)
         (x, y) = position
@@ -145,18 +145,28 @@ class WaveFunction():
         self.wave[index[0]][index[1]] = value
 
     def min_entropy_pos(self):
-        """Returns the position of the Lattice whose statespace has the lowest entropy."""
+        """Returns the position of the Knot whose statespace has the lowest entropy."""
         min_entropy = float("inf")
-        for lattice in self.wait_to_collapse:
+        for Knot in self.wait_to_collapse:
             noise = random.random() / 1000
             # Add some noise to mix things up a little
-            if self[lattice].entropy - noise < min_entropy:
-                position = lattice[:]
+            if self[Knot].entropy - noise < min_entropy:
+                position = Knot[:]
                 min_entropy = self[position].entropy - noise
         return position
 
     def neighbor(self, position):
-        """Yields neighboring Lattices and their directions of a given `position`."""
+        """Yields neighboring Knots and their directions of a given `position`."""
+        if self.options['PeriOpt']:
+            if position[0] == 0:
+                yield (self.size[0] - 1, position[1]), 0
+            elif position[0] == self.size[0] - 1:
+                yield (0, position[1]), 1
+            if position[1] == 0:
+                yield (position[0], self.size[1] - 1), 2
+            elif position[1] == self.size[1] - 1:
+                yield (position[0], 0), 3
+
         if position[0] > 0:
             yield (position[0] - 1, position[1]), 0
         if position[0] < self.size[0] - 1:
@@ -167,19 +177,19 @@ class WaveFunction():
             yield (position[0], position[1] + 1), 3
 
     def collapse(self, position):
-        """Collapses the Lattice at `position`, and then propagates the consequences. """
+        """Collapses the Knot at `position`, and then propagates the consequences. """
         (x, y) = position
         if len(self[position]) < 1:
             # yield from self.backtrack()
             return self.backtrack()
         else:
             if len(self[position]) > 1:
-                # Choose one possible pattern randomly and push this changed Lattice into the Stack.
+                # Choose one possible pattern randomly and push this changed Knot into the Stack.
                 states, w = list(self[position].space.keys()), list(self[position].space.values())
                 elem = random.choices(states, weights=w)[0]
                 del self.wave[x][y].space[elem]
                 self.Stack.append({position: self[position].space.copy()})
-                self[x, y] = Lattice({elem: 1})
+                self[x, y] = Knot({elem: 1})
             self.wait_to_collapse.remove(position)
             return self.propagate(position)
             # yield position
@@ -187,8 +197,9 @@ class WaveFunction():
             # self.propagate(position)
 
     def propagate(self, position):
-        """Propagates the consequences of the wavefunction collapse or statespace changing at `position`.
-        This method keeps propagating the consequences of the consequences,and so on until no consequences remain. 
+        """Propagates the consequences of the wavefunction collapse or statespace 
+        changing at `position`.This method keeps propagating the consequences of 
+        the consequences,and so on until no consequences remain. 
         """
         PropagStack = [position]
         changed = {position}
@@ -207,9 +218,9 @@ class WaveFunction():
                             # break
 
                         elif self.Stack and (nb not in self.Stack[-1].keys()):
-                            # push this changed Lattice into the Stack.
+                            # push this changed Knot into the Stack.
                             self.Stack[-1][nb] = self[nb].space.copy()
-                        self[nb] = Lattice({state: self.weights[state] for state in available})
+                        self[nb] = Knot({state: self.weights[state] for state in available})
                         PropagStack.append(nb)
                         # yield nb
                         # self.update(nb)
@@ -223,7 +234,7 @@ class WaveFunction():
             step = self.Stack.pop()
             # Restore all the Girds affected by the last collapse
             for (position, space) in step.items():
-                self[position] = Lattice(space)
+                self[position] = Knot(space)
                 self.wait_to_collapse.add(position)
                 # yield position
             # yield from [step.keys()]
@@ -232,7 +243,7 @@ class WaveFunction():
         else:
             raise CollapseError("No Sulotion")
 
-    def observe(self, surveil=False):
+    def observe(self, surveil):
         '''Observe the whole WaveFunction'''
         if surveil:
             while self.wait_to_collapse:
@@ -245,18 +256,17 @@ class WaveFunction():
 
 def image2matrix(image_path):
     """Convert image at `image_path` to matrix."""
-    im = matplotlib.image.imread('完成\samples\Angular.png')
-    im=[[tuple(im[x][y])for y in range(im.shape[1])] for x in range(im.shape[0])]
-    
+    im = matplotlib.image.imread(image_path)
+    im = [[tuple(im[x][y]) for y in range(im.shape[1])] for x in range(im.shape[0])]
+
     return im
 
 
 def mean_pixel(wave, position, i, j):
-    """"Get the weighted mean of the state space of position as the pixel there"""
+    """Get the weighted mean of the state space of position as the pixel there"""
     keys, values = list(wave[position].space.keys()), np.array(list(wave[position].space.values()))
     return tuple(
-        map(lambda x: int(np.average(np.array(x), weights=values)),
-            zip(*(wave.patterns[index][i][j] for index in keys))))
+        map(lambda x: np.average(np.array(x), weights=values), zip(*(wave.patterns[index][i][j] for index in keys))))
 
 
 # def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, surveil=False):
@@ -285,7 +295,7 @@ def mean_pixel(wave, position, i, j):
 #         count += 1
 
 
-def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, surveil=False):
+def ImageProcessor(image_path, size, N=3, AllRules=False, PeriodicInput=False, surveil=False, PeriodicOutput=False):
     entry = image2matrix(image_path)
 
     def update(matrix, position, w, N):
@@ -301,22 +311,15 @@ def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, survei
     matrix = np.array([[mean_pixel(w, (0, 0), 0, 0)] * size[0] for _ in range(size[1])])
     print(list(matrix))
     im = plt.imshow(matrix)
-    # plt.pause(0.001)
+    plt.pause(0.0001)
 
     for changed in w.observe(surveil):
         for pos in changed:
             matrix = update(matrix, pos, w, N)
         im.set_array(matrix)
         fig.canvas.draw()
-        # plt.pause(0.001)
+        plt.pause(0.0001)
     plt.show()
-
-    # count = 0
-    # image = Im.new('RGB', size, mean_pixel(w, (0, 0), 0, 0))
-    # img = image.load()
-    # image.save('result\\' + str(count) + '.png')
-
-    # if surveil: count += 1
 
 
 #################################################3
@@ -368,7 +371,7 @@ path.set('')
 
 
 def get_image():
-    path.set(askopenfilename())
+    path.set(askopenfilename(initialdir='.'))
     return True
 
 
@@ -379,7 +382,7 @@ def main():
                    N=set_N.get(),
                    AllRules=AllRules.get(),
                    surveil=surveil.get(),
-                   Periodic=Periodic.get())
+                   PeriodicInput=Periodic.get())
 
 
 Button(frame, text="open file", command=get_image).grid(row=4, column=1)
