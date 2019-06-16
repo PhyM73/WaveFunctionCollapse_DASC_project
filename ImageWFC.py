@@ -104,7 +104,9 @@ def main():
     except RuntimeError:
         tk.messagebox.showerror(title='CollapseError',message="Sorry for failed :(\nYou may try a smaller N or allow more rules!")
     except ValueError:
-        tk.messagebox.showerror(title='SaveError',message="Only PNG or JPG files can be saved!!")
+        tk.messagebox.showerror(title='SaveError', message="Only PNG or JPG files can be saved!!")
+    except Exception as e:
+        tk.massagebox.showerror(title='Error',message=e)
 
 tk.Button(frame2,width=8, text="Open file", command=get_image).grid(row=3, column=1,pady=10,sticky=tk.W)
 tk.Button(frame2,width=8, text="WFC !", command=main).grid(row=3, column=2,pady=10,sticky=tk.W)
