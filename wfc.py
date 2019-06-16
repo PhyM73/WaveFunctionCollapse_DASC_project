@@ -235,7 +235,6 @@ class WaveFunction():
                     if not set(self[nb].space.keys()).issubset(available):
                         available = available & set(self[nb].space.keys())
                         if len(available) == 0:
-                            # print('no')
                             return self.backtrack()
                             # break
 
@@ -244,8 +243,6 @@ class WaveFunction():
                             self.Stack[-1][nb] = self[nb].space.copy()
                         self[nb] = Knot({state: self.weights[state] for state in available})
                         PropagStack.append(nb)
-                        # yield nb
-                        # self.update(nb)
                         changed.add(nb)
         return changed
 
@@ -259,9 +256,6 @@ class WaveFunction():
             for (position, space) in step.items():
                 self[position] = Knot(space)
                 self.wait_to_collapse.add(position)
-                # yield position
-            # yield from [step.keys()]
-            # print('back')
             return set(step.keys())
         else:
             raise CollapseError("No Sulotion")
@@ -317,10 +311,9 @@ def ImageProcessor(image_path, size, N, options):
 
     for changed in w.observe(surveil):
         for pos in changed:
-            # for pos in w.observe(surveil):
             matrix = update(matrix, pos, w, N)
-            im.set_data(matrix)
-            fig.canvas.draw()
+        im.set_data(matrix)
+        fig.canvas.draw()
     plt.pause(0.0000001)
     if tk.messagebox.askyesno(title='Save', message='Save the image?'):
         path = tkinter.filedialog.asksaveasfilename(defaultextension='.png',
