@@ -287,7 +287,9 @@ if __name__ == "__main__":
         for eachline in matrix:
             print(eachline)
 
-    #'L' = land, 'C' = coast, 'S' = sea
+    # This is a demo to show a how wfc is working on string matrix.
+    # Imagine that below is a map, where 'L' = land, 'C' = coast, 'S' = sea,
+    # and now we will show you that how wfc generate maps with some natural rules, such as land cannot be next to sea.
     entry = (
         ('L', 'L', 'L', 'L', 'L', 'L', 'L'),
         ('L', 'L', 'C', 'L', 'L', 'L', 'L'),
@@ -303,4 +305,4 @@ if __name__ == "__main__":
         'Rotation':0,
         'Reflection':0
     }
-    MatrixProcessor(entry, (10,10),N=2,options=options)
+    MatrixProcessor(entry, (10,10),N=1,options=options)
