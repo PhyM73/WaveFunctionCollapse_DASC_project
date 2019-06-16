@@ -110,6 +110,6 @@ def main():
 
 tk.Button(frame2,width=8, text="Open file", command=get_image).grid(row=3, column=1,pady=10,sticky=tk.W)
 tk.Button(frame2,width=8, text="WFC !", command=main).grid(row=3, column=2,pady=10,sticky=tk.W)
-tk.Button(frame2,width=8, text='Exit', command=root.quit()).grid(row=3, column=3,pady=10,sticky=tk.W)
+tk.Button(frame2,width=8, text='Exit', command=root.quit).grid(row=3, column=3,pady=10,sticky=tk.W)
 
 tk.mainloop()
