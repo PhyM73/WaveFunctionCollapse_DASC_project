@@ -88,13 +88,13 @@ class WaveFunction():
             return tuple(reversed(m))
 
         def UD_reflect(m):
-            return tuple(reversed(m[x][:]) for x in range(len(m)))
+            return tuple(tuple(reversed(m[x][:])) for x in range(len(m)))
 
         operand = {m}
         if reflect:
             operand = operand | {LR_reflect(m), UD_reflect(m), LR_reflect(UD_reflect(m))}
         if rotate:
-            m1 = tuple(tuple(m[y][x] for y in range(m[0])) for x in range(m))
+            m1 = tuple(tuple(m[y][x] for y in range(len(m[0]))) for x in range(len(m)))
             operand = operand | {LR_reflect(m1), UD_reflect(m1), LR_reflect(UD_reflect(m1))}
 
         return operand
@@ -225,7 +225,7 @@ class WaveFunction():
         """
         PropagStack = [position]
         changed = {position}
-
+ 
         while PropagStack:
             pos = PropagStack.pop()
 
@@ -291,13 +291,7 @@ def mean_pixel(wave, position, i, j):
 
 
 def ImageProcessor(image_path, size, N, options):
-    #    AllRules=False,
-    #    PeriodicInput=False,
-    #    surveil=True,
-    #    PeriodicOutput=False,
-    #    Save=True,
-    #    Reflection=False,
-    #    Rotation=False,):
+
     entry = image2matrix(image_path)
 
     def update(matrix, position, w, N):
@@ -308,26 +302,28 @@ def ImageProcessor(image_path, size, N, options):
                 matrix[position[0] + i, position[1] + j] = mean_pixel(w, position, i, j)
         return matrix
 
-    # w = WaveFunction(size, entry, N=N, AllRules=AllRules, Rotation=Rotation, Reflection=Reflection)
     w = WaveFunction(size, entry, N=N, **options)
-    fig = plt.figure(figsize=(8, 8))
+    fig = plt.figure(figsize=(6, 6*(size[0]/size[1])))
     matrix = np.array([[mean_pixel(w, (0, 0), 0, 0)] * size[1] for _ in range(size[0])])
     im = plt.imshow(matrix)
+
     plt.axis('off')
-    plt.subplots_adjust(left=0.2, bottom=0.2, right=0.8, top=0.8, hspace=0.2, wspace=0.3)
+    plt.gca().xaxis.set_major_locator(plt.NullLocator())
+    plt.gca().yaxis.set_major_locator(plt.NullLocator())
+    plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = 0, wspace = 0)
+    plt.margins(0,0)
     plt.pause(0.0001)
 
     for changed in w.observe(surveil):
         for pos in changed:
             matrix = update(matrix, pos, w, N)
-        im.set_array(matrix)
-        fig.canvas.draw()
-        plt.pause(0.0001)
-    # if Save: fig.savefig('result\\final.png', dpi=300, format='png')
-    # top = Toplevel()
-    # top.title("message")
-    # msg = Message( top, text = "Done")
-    # msg.pack()
+            im.set_array(matrix)
+            fig.canvas.draw()
+            plt.pause(0.0000001)
+    if tk.messagebox.askyesno(title='Save', message='Save the image?'):
+        path = tkinter.filedialog.asksaveasfilename(defaultextension='.jpg', filetypes= [("PNG", ".png"), ("JPG" , ".jpg")],
+                initialdir='result')
+        fig.savefig(path, dpi=150, pad_inches = 0)
     plt.show()
 
 
@@ -354,70 +350,54 @@ set_height.grid(row=2, column=1, columnspan=3)
 
 tk.Label(frame, text='parameters:').grid(row=3, column=0, sticky=tk.W)
 
-AL = tk.LabelFrame(frame, text="AllRules")
-AL.grid(row=3, column=1, pady=30)
-AllRules = tk.BooleanVar()
-AllRules.set(False)
-tk.Radiobutton(AL, text='False', variable=AllRules, value=False).pack()
-tk.Radiobutton(AL, text='True', variable=AllRules, value=True).pack()
+AllRules = tk.IntVar()
+AllRules.set(0)
+tk.Checkbutton(frame, text='AllRules', variable=AllRules).grid(row=3, column=1, pady=30)
 
-PL = tk.LabelFrame(frame, text="PeriodicInput")
-PL.grid(row=3, column=2, pady=30)
-PeriodicInput = tk.BooleanVar()
-PeriodicInput.set(False)
-tk.Radiobutton(PL, text='False', variable=PeriodicInput, value=False).pack()
-tk.Radiobutton(PL, text='True', variable=PeriodicInput, value=True).pack()
+PeriodicInput = tk.IntVar()
+PeriodicInput.set(0)
+tk.Checkbutton(frame, text='PeriodicInput', variable=PeriodicInput).grid(row=3, column=2, pady=30)
 
-PL = tk.LabelFrame(frame, text="PeriodicOutput")
-PL.grid(row=3, column=5, pady=30)
-PeriodicOutput = tk.BooleanVar()
-PeriodicOutput.set(False)
-tk.Radiobutton(PL, text='False', variable=PeriodicOutput, value=False).pack()
-tk.Radiobutton(PL, text='True', variable=PeriodicOutput, value=True).pack()
+PeriodicOutput = tk.IntVar()
+PeriodicOutput.set(0)
+tk.Checkbutton(frame, text='PeriodicOutput', variable=PeriodicOutput).grid(row=3, column=3, pady=30)
 
-SL = tk.LabelFrame(frame, text="Surveil")
-SL.grid(row=3, column=3, pady=30)
-surveil = tk.BooleanVar()
-surveil.set(True)
-tk.Radiobutton(SL, text='False', variable=surveil, value=False).pack()
-tk.Radiobutton(SL, text='True', variable=surveil, value=True).pack()
+surveil = tk.IntVar()
+surveil.set(1)
+tk.Checkbutton(frame, text='surveil', variable=surveil).grid(row=3, column=4, pady=30)
 
-SaveL = tk.LabelFrame(frame, text="Save")
-SaveL.grid(row=3, column=4, pady=30)
-save = tk.BooleanVar()
-save.set(True)
-tk.Radiobutton(SaveL, text='False', variable=save, value=False).pack()
-tk.Radiobutton(SaveL, text='True', variable=save, value=True).pack()
+Rotation = tk.IntVar()
+Rotation.set(0)
+tk.Checkbutton(frame, text='Rotation', variable=Rotation).grid(row=4, column=1, pady=0)
+
+Reflection = tk.IntVar()
+Reflection.set(0)
+tk.Checkbutton(frame, text='Reflection', variable=Reflection).grid(row=4, column=2, pady=0)
+
 
 path = tk.StringVar()
 path.set('')
-
 
 def get_image():
     path.set(tkinter.filedialog.askopenfilename())
     return True
 
 
-options = {
-    'AllRules': AllRules.get(),
-    'surveil': surveil.get(),
-    'PeriodicInput': PeriodicInput.get(),
-    'PeriodicOutput': PeriodicOutput.get()
-}
 
 
 def main():
+    options = {
+        'AllRules': AllRules.get(),
+        'surveil': surveil.get(),
+        'PeriodicInput': PeriodicInput.get(),
+        'PeriodicOutput': PeriodicOutput.get(),
+        'Rotation':Rotation.get(),
+        'Reflection': Reflection.get()
+    }
     ImageProcessor(path.get(), (set_height.get(), set_width.get()), N=set_N.get(), options=options)
-    # ImageProcessor(path.get(), (set_height.get(), set_width.get()),
-    #                N=set_N.get(),
-    #                AllRules=AllRules.get(),
-    #                surveil=surveil.get(),
-    #                PeriodicInput=PeriodicInput.get(),
-    #                Save=save.get(),
-    #                PeriodicOutput=PeriodicOutput.get())
 
-
-tk.Button(frame, text="open file", command=get_image).grid(row=4, column=1)
-tk.Button(frame, text="begin", command=main).grid(row=4, column=2)
+tk.Button(frame, text="open file", command=get_image).grid(row=5, column=1)
+tk.Button(frame, text="begin", command=main).grid(row=5, column=2)
+tk.Button(frame, text='exit', command=root.quit()).grid(row=5, column=3)
 
 tk.mainloop()
