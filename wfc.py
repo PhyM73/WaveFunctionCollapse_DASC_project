@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import tkinter.filedialog
 
+
 class Lattice():
     """Lattice object which contains its state space and Shannon entropy."""
 
@@ -260,7 +261,7 @@ def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, survei
                 matrix[position[0] + i, position[1] + j] = mean_pixel(w, position, i, j)
         return matrix
 
-    w = WaveFunction((size[0],size[1]), entry, N=N, AllRules=AllRules)
+    w = WaveFunction(size, entry, N=N, AllRules=AllRules)
     fig = plt.figure(figsize = (8,8))
     matrix = np.array([[mean_pixel(w, (0, 0), 0, 0)]*size[1] for _ in range(size[0])])
     im = plt.imshow(matrix)
@@ -280,7 +281,7 @@ def ImageProcessor(image_path, size, N=3, AllRules=False, Periodic=False, survei
     # msg = Message( top, text = "Done")
     # msg.pack()
     plt.show()
-    
+
     # count = 0
     # image = Im.new('RGB', size, mean_pixel(w, (0, 0), 0, 0))
     # img = image.load()
@@ -342,6 +343,8 @@ tk.Radiobutton(SaveL, text ='True', variable = save, value = True).pack()
 
 path = tk.StringVar()
 path.set('')
+
+
 def get_image():
     path.set(tkinter.filedialog.askopenfilename())
     return True
