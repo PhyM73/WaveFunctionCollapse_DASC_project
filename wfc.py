@@ -33,16 +33,14 @@ class CollapseError(StopIteration):
 class WaveFunction():
     """Wave Function of the to-be-determined output
     
-    首先扫描输入矩阵(entry)中的模式、其出现的频率和不同模式之间的邻近关系，进一步根据对称操作的要求补充模式和关系。模式(pattern)是进行分析的最小单元，大小为N*N。
-
-    然后按照WFC算法对波函数进行观测。   
-
     Attributes：
         wave: A 2-D matrix which contains all the Knots.
+        size: The shape of the wave.
 
-        patterns: {i1:p1, i2:p2, ...}     
-        weights: [w1, w2, ...]     
-        rules: [ [{left}, {right}, {up}, {down}], [... ], ... ]        记录每个模式在各个方向上可以匹配的模式
+        options:  All the optional functions.
+        patterns: The index => pattern pairs.     
+        weights:  Record the weight corresponding to the index of each pattern 
+        rules:    Record patterns that each patterns can match in each directions.
      
     """
 
@@ -57,7 +55,7 @@ class WaveFunction():
                  Reflection=False,
                  PeriodicInput=False,
                  PeriodicOutput=False):
-        # 初始化patterns
+        # Scan the entry and extract patterns and rules.
         self.N = N
         self.options = {
             'PeriIpt': PeriodicInput,
@@ -72,17 +70,20 @@ class WaveFunction():
         if N > 1 and AllRules:
             self.make_all_rules()
 
+
         self.size = (size[0] - N + 1, size[1] - N + 1)
-        self.wait_to_collapse = set((x, y) for x in range(self.size[0]) for y in range(self.size[1]))
         self.Stack = []
 
         # Initializes the 2-D WaveFunction matrix, each Knot of the matrix
         # starts with all states as possible. No state is forbidden yet.
+        # And every Knot is waited to collapse.
         state_space = {state: self.weights[state] for state in self.patterns.keys()}
         self.wave = [[Knot(state_space.copy()) for i in range(self.size[1])] for j in range(self.size[0])]
+        self.wait_to_collapse = set((x, y) for x in range(self.size[0]) for y in range(self.size[1]))
 
     @staticmethod
     def symmetry(m, reflect, rotate):
+        """Returns matrix which performed symmetry operations."""
 
         def LR_reflect(m):
             return tuple(reversed(m))
@@ -131,7 +132,8 @@ class WaveFunction():
                     self.make_rule((x, y), matrix)
 
     def make_rule(self, position, matrix):
-        """为position处的pattern及其左侧、上侧的pattern创建邻近规则"""
+        """Makes the adjacent-rule for the pattern at the location with 
+        patterns at its left side and its top side."""
         # The order of directions: (-1,0), (1,0), (0,-1), (0,1)
         (x, y) = position
         if x > 0:
